@@ -1,0 +1,20 @@
+{
+  "name": "project-pumpkin",
+  "version": "1.0.0",
+  "description": "Self-contained Docker application",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "docker:build": "docker build -t project-pumpkin .",
+    "docker:run": "docker run -p 3000:3000 project-pumpkin",
+    "docker:compose": "docker-compose up",
+    "test": "npx playwright test"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@playwright/test": "^1.48.2"
+  }
+}
