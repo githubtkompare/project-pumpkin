@@ -155,10 +155,31 @@ If you need to run the Node.js app alongside tests:
 
 ```bash
 # Start app service
-docker-compose up app
+docker-compose up -d app
+```
 
-# In another terminal, run tests against it
-TEST_URL=http://localhost:3000 npm run docker:test
+### Testing the Dockerized App
+
+**Important**: When testing the app from inside the Playwright container, use `http://app:3000` (the service name), not `http://localhost:3000`:
+
+```bash
+# Correct - uses Docker service name
+TEST_URL=http://app:3000 docker-compose run --rm playwright npx playwright test --project=firefox
+
+# Wrong - localhost refers to inside the Playwright container, not the app
+TEST_URL=http://localhost:3000 npm run docker:test  # This will fail!
+```
+
+**Why `http://app:3000`?**
+Docker Compose creates a network where services communicate by service name. The app runs in a service called `app`, so other containers access it at `http://app:3000`.
+
+### Testing from Your Local Machine
+
+If you have Playwright installed locally (outside Docker), you can test the Dockerized app using localhost:
+
+```bash
+# App is running in Docker, Playwright runs locally
+TEST_URL=http://localhost:3000 npx playwright test --project=firefox
 ```
 
 ## Benefits of This Setup

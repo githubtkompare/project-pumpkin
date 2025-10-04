@@ -10,6 +10,8 @@ services:
       - PORT=3000
     command: npm start
     restart: unless-stopped
+    networks:
+      - playwright-network
 
   playwright:
     build: .
@@ -20,3 +22,11 @@ services:
     environment:
       - TEST_URL=${TEST_URL:-https://www.uchicago.edu/}
     working_dir: /app
+    depends_on:
+      - app
+    networks:
+      - playwright-network
+
+networks:
+  playwright-network:
+    driver: bridge

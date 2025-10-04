@@ -100,8 +100,11 @@ test.describe('Website Screenshot Test', () => {
     // Get URL from environment variable or use default
     const url = process.env.TEST_URL || 'https://www.uchicago.edu/';
 
-    // Extract hostname from URL (remove protocol and trailing slash)
-    const urlWithoutProtocol = url.replace(/^https?:\/\//, '').replace(/\/$/, '');
+    // Extract hostname from URL and sanitize for filesystem compatibility
+    const urlWithoutProtocol = url
+      .replace(/^https?:\/\//, '')           // Remove http:// or https://
+      .replace(/\/$/, '')                    // Remove trailing slash
+      .replace(/[:/?#\[\]@!$&'()*+,;=]/g, '_');  // Replace URL special chars with underscore
 
     // Generate timestamp and create directory name with URL
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
