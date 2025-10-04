@@ -8,4 +8,15 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3000
+    command: npm start
     restart: unless-stopped
+
+  playwright:
+    build: .
+    stdin_open: true      # Keep STDIN open for interactive use (-i flag)
+    tty: true             # Allocate pseudo-TTY for terminal (-t flag)
+    volumes:
+      - ./test-history:/app/test-history  # Persist test results to host
+    environment:
+      - TEST_URL=${TEST_URL:-https://www.uchicago.edu/}
+    working_dir: /app

@@ -6,10 +6,12 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
+    "test": "npx playwright test",
     "docker:build": "docker build -t project-pumpkin .",
     "docker:run": "docker run -p 3000:3000 project-pumpkin",
-    "docker:compose": "docker-compose up",
-    "test": "npx playwright test"
+    "docker:shell": "docker-compose run --rm playwright",
+    "docker:test": "docker-compose run --rm playwright npx playwright test --project=firefox",
+    "docker:compose": "docker-compose up"
   },
   "keywords": [],
   "author": "",
