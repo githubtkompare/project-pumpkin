@@ -1,5 +1,4 @@
 // @ts-check
-import { test, chromium } from '@playwright/test';
 import { promises as fs } from 'fs';
 import path from 'path';
 
@@ -7,7 +6,7 @@ import path from 'path';
  * Auto-scroll function to trigger lazy-loaded images and content
  * Scrolls progressively down the page with pauses to allow content to load
  */
-async function autoScrollPage(page) {
+export async function autoScrollPage(page) {
   const scrollStartTime = Date.now();
 
   await page.evaluate(async () => {
@@ -44,7 +43,7 @@ async function autoScrollPage(page) {
 /**
  * Collect performance metrics from the browser
  */
-async function collectPerformanceMetrics(page) {
+export async function collectPerformanceMetrics(page) {
   return await page.evaluate(() => {
     const navTiming = performance.getEntriesByType('navigation')[0];
     const resourceTimings = performance.getEntriesByType('resource');
@@ -89,115 +88,120 @@ async function collectPerformanceMetrics(page) {
   });
 }
 
-test.describe('Website Screenshot Test', () => {
-  test('navigate to website and capture full page screenshot with performance metrics', async ({ browser }) => {
-    // Set test timeout to 2 minutes for slow-loading pages
-    test.setTimeout(120000);
+/**
+ * Format bytes to human-readable string
+ */
+export function formatBytes(bytes) {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+}
 
-    const testStartTime = Date.now();
+/**
+ * Format milliseconds to human-readable string
+ */
+export function formatMs(ms) {
+  return Math.round(ms * 100) / 100 + ' ms';
+}
 
-    // Create test-history directory if it doesn't exist (separate from Playwright's managed test-results)
-    const testResultsDir = path.join(process.cwd(), 'test-history');
-    await fs.mkdir(testResultsDir, { recursive: true });
+/**
+ * Run a complete website screenshot test with performance metrics
+ * @param {object} browser - Playwright browser instance
+ * @param {string} url - URL to test
+ */
+export async function runWebsiteTest(browser, url) {
+  const testStartTime = Date.now();
 
-    // Get URL from environment variable or use default
-    const url = process.env.TEST_URL || 'https://www.uchicago.edu/';
+  // Create test-history directory if it doesn't exist
+  const testResultsDir = path.join(process.cwd(), 'test-history');
+  await fs.mkdir(testResultsDir, { recursive: true });
 
-    // Extract hostname from URL and sanitize for filesystem compatibility
-    const urlWithoutProtocol = url
-      .replace(/^https?:\/\//, '')           // Remove http:// or https://
-      .replace(/\/$/, '')                    // Remove trailing slash
-      .replace(/[:/?#\[\]@!$&'()*+,;=]/g, '_');  // Replace URL special chars with underscore
+  // Extract hostname from URL and sanitize for filesystem compatibility
+  const urlWithoutProtocol = url
+    .replace(/^https?:\/\//, '')           // Remove http:// or https://
+    .replace(/\/$/, '')                    // Remove trailing slash
+    .replace(/[:/?#\[\]@!$&'()*+,;=]/g, '_');  // Replace URL special chars with underscore
 
-    // Generate timestamp and create directory name with URL
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const dirName = `${timestamp}__${urlWithoutProtocol}`;
-    const testRunDir = path.join(testResultsDir, dirName);
-    await fs.mkdir(testRunDir, { recursive: true });
+  // Generate timestamp and create directory name with URL
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const dirName = `${timestamp}__${urlWithoutProtocol}`;
+  const testRunDir = path.join(testResultsDir, dirName);
+  await fs.mkdir(testRunDir, { recursive: true });
 
-    // Define file paths within the timestamped directory
-    const screenshotPath = path.join(testRunDir, 'screenshot.png');
-    const logPath = path.join(testRunDir, 'report.txt');
-    const harPath = path.join(testRunDir, 'network.har');
+  // Define file paths within the timestamped directory
+  const screenshotPath = path.join(testRunDir, 'screenshot.png');
+  const logPath = path.join(testRunDir, 'report.txt');
+  const harPath = path.join(testRunDir, 'network.har');
 
-    // Create browser context with HAR recording enabled
-    console.log(`Test run directory: ${testRunDir}`);
-    console.log('Starting HAR recording...');
-    const context = await browser.newContext({
-      recordHar: { path: harPath }
-    });
+  // Create browser context with HAR recording enabled
+  console.log(`Test run directory: ${testRunDir}`);
+  console.log('Starting HAR recording...');
+  const context = await browser.newContext({
+    recordHar: { path: harPath }
+  });
 
-    // Create new page in the context
-    const page = await context.newPage();
+  // Create new page in the context
+  const page = await context.newPage();
 
-    // Navigate to the URL (already defined above)
-    console.log(`Target URL: ${url}`);
-    console.log(`Navigating to ${url}...`);
-    await page.goto(url, {
-      waitUntil: 'domcontentloaded',
-      timeout: 60000  // 60 second timeout for navigation
-    });
+  // Navigate to the URL
+  console.log(`Target URL: ${url}`);
+  console.log(`Navigating to ${url}...`);
+  await page.goto(url, {
+    waitUntil: 'domcontentloaded',
+    timeout: 60000  // 60 second timeout for navigation
+  });
 
-    // Wait for all page elements to load
-    console.log('Waiting for page to fully load...');
-    await page.waitForLoadState('load', { timeout: 60000 });
+  // Wait for all page elements to load
+  console.log('Waiting for page to fully load...');
+  await page.waitForLoadState('load', { timeout: 60000 });
 
-    // Give extra time for dynamic content to render
-    await page.waitForTimeout(2000);
+  // Give extra time for dynamic content to render
+  await page.waitForTimeout(2000);
 
-    // Auto-scroll to trigger lazy-loaded images
-    console.log('Auto-scrolling to load lazy-loaded content...');
-    const scrollDuration = await autoScrollPage(page);
-    console.log(`Auto-scroll complete. Duration: ${scrollDuration}ms`);
+  // Auto-scroll to trigger lazy-loaded images
+  console.log('Auto-scrolling to load lazy-loaded content...');
+  const scrollDuration = await autoScrollPage(page);
+  console.log(`Auto-scroll complete. Duration: ${scrollDuration}ms`);
 
-    // Collect performance metrics
-    console.log('Collecting performance metrics...');
-    const performanceMetrics = await collectPerformanceMetrics(page);
+  // Collect performance metrics
+  console.log('Collecting performance metrics...');
+  const performanceMetrics = await collectPerformanceMetrics(page);
 
-    // Take screenshot
-    console.log(`Taking screenshot...`);
-    await page.screenshot({
-      path: screenshotPath,
-      fullPage: true
-    });
+  // Take screenshot
+  console.log(`Taking screenshot...`);
+  await page.screenshot({
+    path: screenshotPath,
+    fullPage: true
+  });
 
-    // Collect metadata before closing context
-    const userAgent = await page.evaluate(() => navigator.userAgent);
-    const pageTitle = await page.title().catch(() => 'N/A');
+  // Collect metadata before closing context
+  const userAgent = await page.evaluate(() => navigator.userAgent);
+  const pageTitle = await page.title().catch(() => 'N/A');
 
-    // Close context to finalize HAR file
-    await context.close();
-    console.log('HAR recording saved.');
+  // Close context to finalize HAR file
+  await context.close();
+  console.log('HAR recording saved.');
 
-    const testDuration = Date.now() - testStartTime;
+  const testDuration = Date.now() - testStartTime;
 
-    // Gather test metadata
-    const testMetadata = {
-      timestamp: new Date().toISOString(),
-      url: url,
-      browser: browser.browserType().name(),
-      userAgent: userAgent,
-      screenshotPath: screenshotPath,
-      harPath: harPath,
-      pageTitle: pageTitle,
-      testDuration: testDuration,
-      scrollDuration: scrollDuration,
-      testStatus: 'PASSED'
-    };
+  // Gather test metadata
+  const testMetadata = {
+    timestamp: new Date().toISOString(),
+    url: url,
+    browser: browser.browserType().name(),
+    userAgent: userAgent,
+    screenshotPath: screenshotPath,
+    harPath: harPath,
+    pageTitle: pageTitle,
+    testDuration: testDuration,
+    scrollDuration: scrollDuration,
+    testStatus: 'PASSED'
+  };
 
-    // Format performance metrics for display
-    const formatBytes = (bytes) => {
-      if (bytes === 0) return '0 Bytes';
-      const k = 1024;
-      const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-      const i = Math.floor(Math.log(bytes) / Math.log(k));
-      return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
-    };
-
-    const formatMs = (ms) => Math.round(ms * 100) / 100 + ' ms';
-
-    // Write test results to text file
-    const logContent = `Website Screenshot Test Results
+  // Write test results to text file
+  const logContent = `Website Screenshot Test Results
 ${'='.repeat(70)}
 TEST INFORMATION
 ${'='.repeat(70)}
@@ -248,13 +252,14 @@ Log File:     ${logPath}
 ${'='.repeat(70)}
 `;
 
-    await fs.writeFile(logPath, logContent, 'utf-8');
-    console.log(`\n${'='.repeat(70)}`);
-    console.log(`Test run completed successfully!`);
-    console.log(`All files saved to: ${testRunDir}`);
-    console.log(`  - Screenshot: screenshot.png`);
-    console.log(`  - HAR file: network.har`);
-    console.log(`  - Report: report.txt`);
-    console.log(`${'='.repeat(70)}`);
-  });
-});
+  await fs.writeFile(logPath, logContent, 'utf-8');
+  console.log(`\n${'='.repeat(70)}`);
+  console.log(`Test run completed successfully!`);
+  console.log(`All files saved to: ${testRunDir}`);
+  console.log(`  - Screenshot: screenshot.png`);
+  console.log(`  - HAR file: network.har`);
+  console.log(`  - Report: report.txt`);
+  console.log(`${'='.repeat(70)}`);
+
+  return testMetadata;
+}

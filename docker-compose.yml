@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   app:
     build: .
@@ -19,6 +17,10 @@ services:
     tty: true             # Allocate pseudo-TTY for terminal (-t flag)
     volumes:
       - ./test-history:/app/test-history  # Persist test results to host
+      - ./test-domains.sh:/app/test-domains.sh  # Mount sequential test script
+      - ./test-domains-parallel.sh:/app/test-domains-parallel.sh  # Mount parallel test script
+      - ./tests:/app/tests  # Mount entire tests directory for updated test files
+      - ./playwright.config.js:/app/playwright.config.js  # Mount config
     environment:
       - TEST_URL=${TEST_URL:-https://www.uchicago.edu/}
     working_dir: /app
