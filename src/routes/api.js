@@ -10,7 +10,9 @@ import {
   getFastestDomains,
   getTestsWithErrors,
   getFailedRequests,
-  getFailedRequestsByTestId
+  getFailedRequestsByTestId,
+  getAvailableDates,
+  getTestRunsByDate
 } from '../database/queries.js';
 
 const router = express.Router();
@@ -175,6 +177,46 @@ router.get('/stats/errors', async (req, res) => {
     res.json({ success: true, data: errors });
   } catch (error) {
     console.error('API Error - /stats/errors:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/calendar/available-dates
+ * Get all dates that have test runs (for calendar highlighting)
+ */
+router.get('/calendar/available-dates', async (req, res) => {
+  try {
+    const dates = await getAvailableDates();
+    res.json({ success: true, data: dates });
+  } catch (error) {
+    console.error('API Error - /calendar/available-dates:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/calendar/runs-by-date
+ * Get all test runs for a specific date
+ * Query parameter: date (YYYY-MM-DD)
+ */
+router.get('/calendar/runs-by-date', async (req, res) => {
+  try {
+    const date = req.query.date;
+    if (!date) {
+      return res.status(400).json({ success: false, error: 'Date parameter is required' });
+    }
+
+    // Validate date format (YYYY-MM-DD)
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(date)) {
+      return res.status(400).json({ success: false, error: 'Invalid date format. Use YYYY-MM-DD' });
+    }
+
+    const runs = await getTestRunsByDate(date);
+    res.json({ success: true, data: runs });
+  } catch (error) {
+    console.error('API Error - /calendar/runs-by-date:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

@@ -627,3 +627,67 @@ export async function getFailedRequestsByTestId(testId) {
     return [];
   }
 }
+
+/**
+ * Get all dates that have test runs (for calendar highlighting)
+ * @returns {Promise<Array<string>>} Array of dates in YYYY-MM-DD format
+ */
+export async function getAvailableDates() {
+  if (!isDatabaseConnected()) {
+    return [];
+  }
+
+  const sql = `
+    SELECT DISTINCT DATE(run_timestamp) as test_date
+    FROM test_runs
+    ORDER BY test_date DESC
+  `;
+
+  try {
+    const result = await query(sql);
+    return result?.rows.map(row => row.test_date.toISOString().split('T')[0]) || [];
+  } catch (error) {
+    console.error('Failed to get available dates:', error.message);
+    return [];
+  }
+}
+
+/**
+ * Get all test runs for a specific date
+ * @param {string} date - Date in YYYY-MM-DD format
+ * @returns {Promise<Array>}
+ */
+export async function getTestRunsByDate(date) {
+  if (!isDatabaseConnected()) {
+    return [];
+  }
+
+  const sql = `
+    SELECT
+      tr.id,
+      tr.run_uuid,
+      tr.run_timestamp,
+      tr.total_domains,
+      tr.parallel_workers,
+      tr.duration_ms,
+      tr.passed_count,
+      tr.failed_count,
+      tr.status,
+      COUNT(dt.id) as tests_completed,
+      ROUND(AVG(dt.total_page_load_ms)::numeric, 2) as avg_page_load_ms,
+      ROUND(AVG(dt.time_to_first_byte_ms)::numeric, 2) as avg_ttfb_ms
+    FROM test_runs tr
+    LEFT JOIN domain_tests dt ON dt.test_run_id = tr.id
+    WHERE DATE(tr.run_timestamp) = $1
+    GROUP BY tr.id
+    ORDER BY tr.run_timestamp DESC
+  `;
+
+  try {
+    const result = await query(sql, [date]);
+    return result?.rows || [];
+  } catch (error) {
+    console.error('Failed to get test runs by date:', error.message);
+    return [];
+  }
+}

@@ -73,7 +73,7 @@ async function fetchStats() {
 
 async function fetchTestRuns() {
   try {
-    const response = await fetch('/api/test-runs?limit=20');
+    const response = await fetch('/api/test-runs?limit=5');
     const result = await response.json();
     if (result.success) {
       displayTestRuns(result.data);
@@ -173,11 +173,123 @@ function displayTableError(tableId, message) {
   tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted">${message}</td></tr>`;
 }
 
+// Calendar and date search functionality
+let availableDates = [];
+let calendarInstance = null;
+
+async function fetchAvailableDates() {
+  try {
+    const response = await fetch('/api/calendar/available-dates');
+    const result = await response.json();
+    if (result.success) {
+      availableDates = result.data;
+      initializeCalendar();
+    }
+  } catch (error) {
+    console.error('Failed to fetch available dates:', error);
+  }
+}
+
+function initializeCalendar() {
+  const dateInput = document.getElementById('date-input');
+
+  calendarInstance = flatpickr('#calendar-container', {
+    inline: true,
+    enable: availableDates,
+    dateFormat: 'Y-m-d',
+    onChange: function(selectedDates, dateStr) {
+      if (dateStr) {
+        dateInput.value = dateStr;
+        fetchRunsByDate(dateStr);
+      }
+    }
+  });
+
+  // Also bind to the input field
+  flatpickr('#date-input', {
+    enable: availableDates,
+    dateFormat: 'Y-m-d',
+    onChange: function(selectedDates, dateStr) {
+      if (dateStr && calendarInstance) {
+        calendarInstance.setDate(dateStr, false);
+        fetchRunsByDate(dateStr);
+      }
+    }
+  });
+}
+
+async function fetchRunsByDate(date) {
+  try {
+    const response = await fetch(`/api/calendar/runs-by-date?date=${date}`);
+    const result = await response.json();
+
+    if (result.success) {
+      displayDateSearchResults(date, result.data);
+    } else {
+      displayDateSearchError(date, 'No test runs found for this date');
+    }
+  } catch (error) {
+    console.error('Failed to fetch runs by date:', error);
+    displayDateSearchError(date, 'Failed to load test runs');
+  }
+}
+
+function displayDateSearchResults(date, runs) {
+  const resultsContainer = document.getElementById('date-search-results');
+  const dateDisplay = document.getElementById('selected-date-display');
+  const tbody = document.querySelector('#date-search-table tbody');
+
+  dateDisplay.textContent = formatDate(date);
+  resultsContainer.style.display = 'block';
+
+  if (runs.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">No test runs found for this date</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = runs.map(run => `
+    <tr>
+      <td>${run.id}</td>
+      <td>${formatTimestamp(run.run_timestamp)}</td>
+      <td>${getStatusBadge(run)}</td>
+      <td>${run.total_domains}</td>
+      <td class="text-success">${run.passed_count || 0}</td>
+      <td class="text-danger">${run.failed_count || 0}</td>
+      <td>${formatNumber(run.avg_page_load_ms)} ms</td>
+      <td>${formatDuration(run.duration_ms)}</td>
+      <td>
+        <a href="/run-details.html?id=${run.id}" class="btn btn-sm btn-outline-primary">View</a>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function displayDateSearchError(date, message) {
+  const resultsContainer = document.getElementById('date-search-results');
+  const dateDisplay = document.getElementById('selected-date-display');
+  const tbody = document.querySelector('#date-search-table tbody');
+
+  dateDisplay.textContent = formatDate(date);
+  resultsContainer.style.display = 'block';
+  tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted">${message}</td></tr>`;
+}
+
+function formatDate(dateStr) {
+  const date = new Date(dateStr + 'T00:00:00');
+  return date.toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+}
+
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
   fetchLatestRun();
   fetchStats();
   fetchTestRuns();
+  fetchAvailableDates();
 
   // Auto-refresh every 30 seconds
   setInterval(() => {
