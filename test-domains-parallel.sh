@@ -12,8 +12,8 @@ if [ ! -f "$DOMAINS_FILE" ]; then
     exit 1
 fi
 
-# Count total domains
-TOTAL=$(wc -l < "$DOMAINS_FILE" | tr -d ' ')
+# Count total domains (use grep -c to count non-empty lines, not newlines)
+TOTAL=$(grep -c . "$DOMAINS_FILE")
 
 echo "========================================================================"
 echo "Parallel Domain Testing"

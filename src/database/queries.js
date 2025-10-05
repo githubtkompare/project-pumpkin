@@ -103,6 +103,35 @@ export async function getDomainTestsByRun(testRunId) {
 }
 
 /**
+ * Get a single domain test by ID with all details
+ * @param {number} testId - Domain test ID
+ * @returns {Promise<object|null>}
+ */
+export async function getDomainTestById(testId) {
+  if (!isDatabaseConnected()) {
+    return null;
+  }
+
+  const sql = `
+    SELECT
+      dt.*,
+      tr.run_timestamp,
+      tr.id as test_run_id
+    FROM domain_tests dt
+    JOIN test_runs tr ON tr.id = dt.test_run_id
+    WHERE dt.id = $1
+  `;
+
+  try {
+    const result = await query(sql, [testId]);
+    return result?.rows[0] || null;
+  } catch (error) {
+    console.error('Failed to get domain test:', error.message);
+    return null;
+  }
+}
+
+/**
  * Get performance trend for a specific domain across multiple test runs
  * @param {string} domain - Domain name (e.g., 'www.uchicago.edu')
  * @param {number} limit - Number of historical runs to include (default: 10)
@@ -454,14 +483,24 @@ export async function getFailedRequests(testRunId = null, limit = 50) {
 
     const failedRequests = [];
 
-    // Import fs dynamically to avoid issues in browser environments
+    // Import fs and path dynamically to avoid issues in browser environments
     const { promises: fs } = await import('fs');
+    const path = await import('path');
+    const { fileURLToPath } = await import('url');
+
+    // Get directory path for resolving HAR files
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
 
     // Process each test and parse its HAR file
     for (const test of tests) {
       try {
+        // Convert Docker container path to actual filesystem path
+        const harPath = test.har_path.replace('/app/', '');
+        const absoluteHarPath = path.join(__dirname, '..', '..', harPath);
+
         // Read and parse HAR file
-        const harContent = await fs.readFile(test.har_path, 'utf-8');
+        const harContent = await fs.readFile(absoluteHarPath, 'utf-8');
         const harData = JSON.parse(harContent);
 
         // Extract failed requests from HAR entries
@@ -499,6 +538,92 @@ export async function getFailedRequests(testRunId = null, limit = 50) {
     return failedRequests;
   } catch (error) {
     console.error('Failed to get failed requests:', error.message);
+    return [];
+  }
+}
+
+/**
+ * Get failed HTTP requests for a specific domain test
+ * @param {number} testId - Domain test ID
+ * @returns {Promise<Array>} Array of {failedRequestUrl, statusCode, statusCategory}
+ */
+export async function getFailedRequestsByTestId(testId) {
+  if (!isDatabaseConnected()) {
+    return [];
+  }
+
+  const sql = `
+    SELECT
+      dt.id,
+      dt.url as test_url,
+      dt.domain as test_domain,
+      dt.har_path,
+      dt.http_response_codes
+    FROM domain_tests dt
+    WHERE dt.id = $1
+      AND dt.http_response_codes::text ~ '"[4-5][0-9]{2}"'
+  `;
+
+  try {
+    const result = await query(sql, [testId]);
+    const test = result?.rows[0];
+
+    if (!test) {
+      return [];
+    }
+
+    const failedRequests = [];
+
+    // Import fs and path dynamically
+    const { promises: fs } = await import('fs');
+    const path = await import('path');
+    const { fileURLToPath } = await import('url');
+
+    try {
+      // Convert Docker container path to actual filesystem path
+      // Docker path: /app/test-history/...
+      // Local path: /path/to/project/test-history/...
+      const __filename = fileURLToPath(import.meta.url);
+      const __dirname = path.dirname(__filename);
+      const harPath = test.har_path.replace('/app/', '');
+      const absoluteHarPath = path.join(__dirname, '..', '..', harPath);
+
+      // Read and parse HAR file
+      const harContent = await fs.readFile(absoluteHarPath, 'utf-8');
+      const harData = JSON.parse(harContent);
+
+      // Extract failed requests from HAR entries
+      if (harData.log && harData.log.entries) {
+        for (const entry of harData.log.entries) {
+          const statusCode = entry.response?.status;
+
+          // Only include 4xx and 5xx errors
+          if (statusCode >= 400) {
+            const requestUrl = entry.request?.url || 'Unknown URL';
+
+            // Determine status category
+            let statusCategory = 'Unknown';
+            if (statusCode >= 400 && statusCode < 500) {
+              statusCategory = 'Client Error';
+            } else if (statusCode >= 500) {
+              statusCategory = 'Server Error';
+            }
+
+            failedRequests.push({
+              failedRequestUrl: requestUrl,
+              statusCode: statusCode,
+              statusCategory: statusCategory
+            });
+          }
+        }
+      }
+    } catch (harError) {
+      console.error(`Failed to parse HAR file for test ${testId}:`, harError.message);
+    }
+
+    return failedRequests;
+  } catch (error) {
+    console.error('Failed to get failed requests by test ID:', error.message);
     return [];
   }
 }

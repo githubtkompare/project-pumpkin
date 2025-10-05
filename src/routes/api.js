@@ -1,0 +1,182 @@
+// @ts-check
+import express from 'express';
+import {
+  getAllTestRuns,
+  getDomainTestsByRun,
+  getDomainTestById,
+  getLatestTestRun,
+  getLatestRunAverages,
+  getSlowestDomains,
+  getFastestDomains,
+  getTestsWithErrors,
+  getFailedRequests,
+  getFailedRequestsByTestId
+} from '../database/queries.js';
+
+const router = express.Router();
+
+/**
+ * GET /api/test-runs
+ * Get all test runs with summary statistics
+ */
+router.get('/test-runs', async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 10;
+    const runs = await getAllTestRuns(limit);
+    res.json({ success: true, data: runs });
+  } catch (error) {
+    console.error('API Error - /test-runs:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/test-runs/latest
+ * Get the latest test run with summary
+ */
+router.get('/test-runs/latest', async (req, res) => {
+  try {
+    const latest = await getLatestTestRun();
+    if (!latest) {
+      return res.status(404).json({ success: false, error: 'No test runs found' });
+    }
+    res.json({ success: true, data: latest });
+  } catch (error) {
+    console.error('API Error - /test-runs/latest:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/test-runs/:id
+ * Get specific test run details
+ */
+router.get('/test-runs/:id', async (req, res) => {
+  try {
+    const runs = await getAllTestRuns(1000); // Get all to find specific one
+    const run = runs.find(r => r.id === parseInt(req.params.id));
+
+    if (!run) {
+      return res.status(404).json({ success: false, error: 'Test run not found' });
+    }
+
+    res.json({ success: true, data: run });
+  } catch (error) {
+    console.error('API Error - /test-runs/:id:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/test-runs/:id/domains
+ * Get all domain tests for a specific test run
+ */
+router.get('/test-runs/:id/domains', async (req, res) => {
+  try {
+    const testRunId = parseInt(req.params.id);
+    const domains = await getDomainTestsByRun(testRunId);
+    res.json({ success: true, data: domains });
+  } catch (error) {
+    console.error('API Error - /test-runs/:id/domains:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/domain-tests/:id
+ * Get a single domain test with all details
+ */
+router.get('/domain-tests/:id', async (req, res) => {
+  try {
+    const testId = parseInt(req.params.id);
+    const test = await getDomainTestById(testId);
+
+    if (!test) {
+      return res.status(404).json({ success: false, error: 'Domain test not found' });
+    }
+
+    res.json({ success: true, data: test });
+  } catch (error) {
+    console.error('API Error - /domain-tests/:id:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/domain-tests/:id/failed-requests
+ * Get failed HTTP requests (400+) for a specific domain test
+ */
+router.get('/domain-tests/:id/failed-requests', async (req, res) => {
+  try {
+    const testId = parseInt(req.params.id);
+    const failedRequests = await getFailedRequestsByTestId(testId);
+    res.json({ success: true, data: failedRequests });
+  } catch (error) {
+    console.error('API Error - /domain-tests/:id/failed-requests:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/stats/latest
+ * Get statistics for the latest test run
+ */
+router.get('/stats/latest', async (req, res) => {
+  try {
+    const stats = await getLatestRunAverages();
+    if (!stats) {
+      return res.status(404).json({ success: false, error: 'No statistics available' });
+    }
+    res.json({ success: true, data: stats });
+  } catch (error) {
+    console.error('API Error - /stats/latest:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/stats/slowest
+ * Get slowest domains from latest test run
+ */
+router.get('/stats/slowest', async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 10;
+    const slowest = await getSlowestDomains(limit);
+    res.json({ success: true, data: slowest });
+  } catch (error) {
+    console.error('API Error - /stats/slowest:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/stats/fastest
+ * Get fastest domains from latest test run
+ */
+router.get('/stats/fastest', async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 10;
+    const fastest = await getFastestDomains(limit);
+    res.json({ success: true, data: fastest });
+  } catch (error) {
+    console.error('API Error - /stats/fastest:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/stats/errors
+ * Get tests with errors
+ */
+router.get('/stats/errors', async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 50;
+    const errors = await getTestsWithErrors(limit);
+    res.json({ success: true, data: errors });
+  } catch (error) {
+    console.error('API Error - /stats/errors:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+export default router;

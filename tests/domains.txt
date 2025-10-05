@@ -1,7 +1,5 @@
-authoring.uchicago.edu
 bicoe.uchicago.edu
 bursar.uchicago.edu
-chancellor.uchicago.edu
 cloudservices.its.uchicago.edu
 ewp-maintenance.its.uchicago.edu
 fst.uchicago.edu
@@ -23,11 +21,9 @@ printing.uchicago.edu
 psac.uchicago.edu
 safecommunity.uchicago.edu
 safety-security.uchicago.edu
-scidentity.uchicago.edu
 securedata.uchicago.edu
 staffnewhire.uchicago.edu
 staffrecognition.uchicago.edu
-startersite.uchicago.edu
 thechicagoforum.uchicago.edu
 webconferencing.uchicago.edu
 www.cloudservices.its.uchicago.edu
