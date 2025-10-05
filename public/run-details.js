@@ -145,16 +145,33 @@ function displayDomainTests(tests) {
       <td class="text-truncate" style="max-width: 200px;" title="${test.page_title || 'N/A'}">
         ${test.page_title || 'N/A'}
       </td>
-      <td>${formatNumber(test.total_page_load_ms)}</td>
-      <td>${formatNumber(test.time_to_first_byte_ms)}</td>
-      <td>${test.total_resources || 'N/A'}</td>
+      <td data-order="${test.total_page_load_ms || 0}">${formatNumber(test.total_page_load_ms)}</td>
+      <td data-order="${test.time_to_first_byte_ms || 0}">${formatNumber(test.time_to_first_byte_ms)}</td>
+      <td data-order="${test.total_resources || 0}">${test.total_resources || 'N/A'}</td>
       <td>${formatHttpCodes(test.http_response_codes)}</td>
-      <td>${formatTimestamp(test.test_timestamp)}</td>
+      <td data-order="${new Date(test.test_timestamp).getTime()}">${formatTimestamp(test.test_timestamp)}</td>
       <td>
         <a href="/test-detail.html?id=${test.id}" class="btn btn-sm btn-outline-primary">View Details</a>
       </td>
     </tr>
   `).join('');
+
+  // Initialize DataTables
+  if ($.fn.DataTable.isDataTable('#domain-tests-table')) {
+    $('#domain-tests-table').DataTable().destroy();
+  }
+
+  $('#domain-tests-table').DataTable({
+    pageLength: 20,
+    order: [[3, 'desc']], // Sort by Load Time (descending) by default
+    columnDefs: [
+      { orderable: false, targets: 8 } // Disable sorting on Actions column
+    ],
+    language: {
+      search: "Filter:",
+      lengthMenu: "Show _MENU_ entries per page"
+    }
+  });
 }
 
 function displayError(elementId, message) {
