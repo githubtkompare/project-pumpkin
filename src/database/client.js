@@ -14,7 +14,15 @@ let isConnected = false;
  * Get database connection configuration from environment
  */
 function getConfig() {
-  const databaseUrl = process.env.DATABASE_URL || 'postgresql://pumpkin:pumpkin_password@postgres:5432/playwright_metrics';
+  const databaseUrl = process.env.DATABASE_URL;
+
+  if (!databaseUrl) {
+    throw new Error(
+      'DATABASE_URL environment variable is required. ' +
+      'Please set it in your .env file or environment. ' +
+      'Example: postgresql://user:password@host:5432/database'
+    );
+  }
 
   return {
     connectionString: databaseUrl,

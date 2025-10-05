@@ -3,9 +3,9 @@ services:
     image: postgres:16-alpine
     container_name: project-pumpkin-db
     environment:
-      - POSTGRES_USER=pumpkin
-      - POSTGRES_PASSWORD=pumpkin_password
-      - POSTGRES_DB=playwright_metrics
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -14,7 +14,7 @@ services:
     networks:
       - playwright-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U pumpkin -d playwright_metrics"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -29,9 +29,9 @@ services:
       - ./src:/app/src  # Mount src directory for development
       - ./test-history:/app/test-history  # Mount test-history for screenshots/HAR files
     environment:
-      - NODE_ENV=production
-      - PORT=3000
-      - DATABASE_URL=postgresql://pumpkin:pumpkin_password@postgres:5432/playwright_metrics
+      - NODE_ENV=${NODE_ENV:-production}
+      - PORT=${PORT:-3000}
+      - DATABASE_URL=${DATABASE_URL}
     command: npm start
     restart: unless-stopped
     depends_on:
@@ -53,7 +53,7 @@ services:
       - ./src:/app/src  # Mount src directory for database modules
     environment:
       - TEST_URL=${TEST_URL:-https://www.uchicago.edu/}
-      - DATABASE_URL=postgresql://pumpkin:pumpkin_password@postgres:5432/playwright_metrics
+      - DATABASE_URL=${DATABASE_URL}
     working_dir: /app
     depends_on:
       postgres:

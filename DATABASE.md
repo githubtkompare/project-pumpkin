@@ -101,10 +101,16 @@ All tests that have 4xx/5xx HTTP responses or failed status
 
 ## Database Connection
 
-The database connection is configured via the `DATABASE_URL` environment variable:
+The database connection is configured via the `DATABASE_URL` environment variable.
 
-```
-DATABASE_URL=postgresql://pumpkin:pumpkin_password@postgres:5432/playwright_metrics
+**Setup:**
+1. Copy `.env.example` to `.env`
+2. Update the password in `.env`
+3. Never commit `.env` to version control
+
+**Example `.env` file:**
+```bash
+DATABASE_URL=postgresql://pumpkin:your_password@postgres:5432/playwright_metrics
 ```
 
 ### Connection Features:
@@ -175,8 +181,8 @@ Connect to the database directly using `psql`:
 # From host machine
 docker exec -it project-pumpkin-db psql -U pumpkin -d playwright_metrics
 
-# From playwright container
-psql postgresql://pumpkin:pumpkin_password@postgres:5432/playwright_metrics
+# From playwright container (uses DATABASE_URL from .env)
+psql $DATABASE_URL
 ```
 
 ## Example Queries
@@ -313,13 +319,10 @@ SELECT pg_size_pretty(pg_database_size('playwright_metrics'));
 The cleanup utility removes test-history directories that don't have corresponding database entries (from failed runs or pre-database tests):
 
 ```bash
-# Preview what would be deleted (recommended first)
-DATABASE_URL='postgresql://pumpkin:pumpkin_password@localhost:5432/playwright_metrics' \
-  npm run db:cleanup -- --dry-run
-
-# Actually delete orphaned directories
-DATABASE_URL='postgresql://pumpkin:pumpkin_password@localhost:5432/playwright_metrics' \
-  npm run db:cleanup
+# From host machine (load .env first)
+source .env
+npm run db:cleanup -- --dry-run  # Preview
+npm run db:cleanup               # Delete
 
 # Inside Docker containers (DATABASE_URL already set)
 npm run db:cleanup -- --dry-run  # Preview
@@ -396,14 +399,22 @@ EXPLAIN ANALYZE SELECT * FROM domain_tests WHERE domain = 'www.uchicago.edu';
 
 ## Security Notes
 
-⚠️ **Default credentials are for development only**
+⚠️ **Important Security Practices**
 
-For production use:
-1. Change database password in [docker-compose.yml](docker-compose.yml)
-2. Use secrets management (Docker secrets, environment files)
-3. Enable SSL connections
-4. Restrict network access
-5. Regular backups
+**Development:**
+1. Never commit `.env` file to version control (already in `.gitignore`)
+2. Use strong passwords in your local `.env` file
+3. Copy `.env.example` to `.env` and customize
+
+**Production:**
+1. Use Docker secrets or cloud-native secret management
+2. Enable SSL/TLS for database connections
+3. Restrict network access (firewall rules, VPC)
+4. Regular backups with encryption
+5. Rotate credentials periodically
+6. Use read-only database users for reporting
+
+See [SECURITY.md](SECURITY.md) for detailed guidelines.
 
 ## Future Enhancements
 
