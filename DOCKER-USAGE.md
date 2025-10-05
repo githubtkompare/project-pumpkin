@@ -44,11 +44,9 @@ npx playwright test --project=firefox
 # List all test runs
 ls -la test-history/
 
-# View a specific report
-cat test-history/2025-10-03T22-30-15-123Z__www.uchicago.edu/report.txt
-
-# View latest report
-cat test-history/$(ls -t test-history/ | head -1)/report.txt
+# View performance metrics and reports (from database)
+npm run db:report                # Full performance report
+npm run db:query latest          # Latest test run summary
 ```
 
 ### Exit Container
@@ -121,13 +119,17 @@ Each test run creates a timestamped directory:
 test-history/
 ├── 2025-10-03T22-30-15-123Z__www.uchicago.edu/
 │   ├── screenshot.png    # Full-page screenshot
-│   ├── network.har       # Network activity (HAR file)
-│   └── report.txt        # Performance metrics
+│   └── network.har       # Network activity (HAR file)
 └── 2025-10-03T22-31-45-789Z__www.google.com/
     ├── screenshot.png
-    ├── network.har
-    └── report.txt
+    └── network.har
 ```
+
+All performance metrics and test summaries are stored in PostgreSQL and can be accessed via:
+- `npm run db:report` - Comprehensive performance report
+- `npm run db:query latest` - Latest test run summary
+- `npm run db:query slowest 10` - 10 slowest domains
+- `npm run db:query errors` - Tests with errors
 
 ## Troubleshooting
 

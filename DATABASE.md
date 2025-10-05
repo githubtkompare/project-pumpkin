@@ -308,6 +308,35 @@ VACUUM FULL;
 SELECT pg_size_pretty(pg_database_size('playwright_metrics'));
 ```
 
+### Cleanup Orphaned Test Directories
+
+The cleanup utility removes test-history directories that don't have corresponding database entries (from failed runs or pre-database tests):
+
+```bash
+# Preview what would be deleted (recommended first)
+DATABASE_URL='postgresql://pumpkin:pumpkin_password@localhost:5432/playwright_metrics' \
+  npm run db:cleanup -- --dry-run
+
+# Actually delete orphaned directories
+DATABASE_URL='postgresql://pumpkin:pumpkin_password@localhost:5432/playwright_metrics' \
+  npm run db:cleanup
+
+# Inside Docker containers (DATABASE_URL already set)
+npm run db:cleanup -- --dry-run  # Preview
+npm run db:cleanup               # Delete
+```
+
+**What it does:**
+1. Scans all directories in `test-history/`
+2. Queries database for all registered test paths
+3. Identifies directories not in database (orphaned)
+4. Deletes orphaned directories (keeps database-registered ones)
+
+**When to use:**
+- After failed test runs that didn't complete database insertion
+- To clean up tests created before database integration
+- To reclaim disk space from incomplete tests
+
 ## Performance Considerations
 
 ### Indexes

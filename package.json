@@ -14,7 +14,8 @@
     "docker:test": "docker-compose run --rm playwright npx playwright test --project=firefox",
     "docker:compose": "docker-compose up",
     "db:query": "node src/database/cli.js",
-    "db:report": "node src/reports/generate.js"
+    "db:report": "node src/reports/generate.js",
+    "db:cleanup": "node src/database/cleanup.js"
   },
   "keywords": [],
   "author": "",

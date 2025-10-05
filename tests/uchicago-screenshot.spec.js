@@ -147,7 +147,6 @@ test.describe('Website Screenshot Test', () => {
 
     // Define file paths within the timestamped directory
     const screenshotPath = path.join(testRunDir, 'screenshot.png');
-    const logPath = path.join(testRunDir, 'report.txt');
     const harPath = path.join(testRunDir, 'network.har');
 
     // Create browser context with HAR recording enabled
@@ -219,94 +218,11 @@ test.describe('Website Screenshot Test', () => {
       testStatus: 'PASSED'
     };
 
-    // Format performance metrics for display
-    const formatBytes = (bytes) => {
-      if (bytes === 0) return '0 Bytes';
-      const k = 1024;
-      const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-      const i = Math.floor(Math.log(bytes) / Math.log(k));
-      return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
-    };
-
-    const formatMs = (ms) => Math.round(ms * 100) / 100 + ' ms';
-
-    // Write test results to text file
-    const logContent = `Website Screenshot Test Results
-${'='.repeat(70)}
-TEST INFORMATION
-${'='.repeat(70)}
-Timestamp:        ${testMetadata.timestamp}
-URL:              ${testMetadata.url}
-Browser:          ${testMetadata.browser}
-User-Agent:       ${testMetadata.userAgent}
-Page Title:       ${testMetadata.pageTitle}
-Test Duration:    ${testDuration} ms
-Scroll Duration:  ${scrollDuration} ms
-Status:           ${testMetadata.testStatus}
-
-${'='.repeat(70)}
-PERFORMANCE METRICS - NAVIGATION TIMING
-${'='.repeat(70)}
-DNS Lookup:              ${formatMs(performanceMetrics.navigation.dnsLookup)}
-TCP Connection:          ${formatMs(performanceMetrics.navigation.tcpConnection)}
-TLS Negotiation:         ${formatMs(performanceMetrics.navigation.tlsNegotiation)}
-Time to First Byte:      ${formatMs(performanceMetrics.navigation.timeToFirstByte)}
-Response Time:           ${formatMs(performanceMetrics.navigation.responseTime)}
-DOM Content Loaded:      ${formatMs(performanceMetrics.navigation.domContentLoaded)}
-DOM Interactive:         ${formatMs(performanceMetrics.navigation.domInteractive)}
-Total Page Load Time:    ${formatMs(performanceMetrics.navigation.pageLoadTime)}
-
-Document Transfer Size:  ${formatBytes(performanceMetrics.navigation.transferSize)}
-Document Encoded Size:   ${formatBytes(performanceMetrics.navigation.encodedBodySize)}
-Document Decoded Size:   ${formatBytes(performanceMetrics.navigation.decodedBodySize)}
-
-${'='.repeat(70)}
-NETWORK STATISTICS - RESOURCE TIMING
-${'='.repeat(70)}
-Total Resources Loaded:  ${performanceMetrics.resources.total}
-Total Transfer Size:     ${formatBytes(performanceMetrics.resources.totalTransferSize)}
-Total Encoded Size:      ${formatBytes(performanceMetrics.resources.totalEncodedSize)}
-
-Resources by Type:
-${Object.entries(performanceMetrics.resources.byType)
-  .sort((a, b) => b[1] - a[1])
-  .map(([type, count]) => `  ${type.padEnd(20)} ${count}`)
-  .join('\n')}
-
-${'='.repeat(70)}
-HTTP RESPONSE CODE SUMMARY
-${'='.repeat(70)}
-${Object.entries(httpResponseCodes).length > 0
-  ? Object.entries(httpResponseCodes)
-      .sort((a, b) => parseInt(a[0]) - parseInt(b[0]))
-      .map(([code, count]) => {
-        const codeInt = parseInt(code);
-        let category = '';
-        if (codeInt >= 200 && codeInt < 300) category = '(Success)';
-        else if (codeInt >= 300 && codeInt < 400) category = '(Redirect)';
-        else if (codeInt >= 400 && codeInt < 500) category = '(Client Error)';
-        else if (codeInt >= 500) category = '(Server Error)';
-        return `  ${code} ${category.padEnd(16)} ${count} ${count === 1 ? 'response' : 'responses'}`;
-      })
-      .join('\n')
-  : '  No HTTP response data available'}
-
-${'='.repeat(70)}
-OUTPUT FILES
-${'='.repeat(70)}
-Screenshot:   ${screenshotPath}
-HAR File:     ${harPath}
-Log File:     ${logPath}
-${'='.repeat(70)}
-`;
-
-    await fs.writeFile(logPath, logContent, 'utf-8');
     console.log(`\n${'='.repeat(70)}`);
     console.log(`Test run completed successfully!`);
     console.log(`All files saved to: ${testRunDir}`);
     console.log(`  - Screenshot: screenshot.png`);
     console.log(`  - HAR file: network.har`);
-    console.log(`  - Report: report.txt`);
     console.log(`${'='.repeat(70)}`);
   });
 });

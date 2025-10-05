@@ -132,13 +132,12 @@ export async function insertDomainTest(testRunId, testMetadata, performanceMetri
       http_response_codes,
       screenshot_path,
       har_path,
-      report_path,
       screenshot_data,
       har_data
     ) VALUES (
       $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
       $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
-      $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31
+      $21, $22, $23, $24, $25, $26, $27, $28, $29, $30
     )
     RETURNING id, test_uuid
   `;
@@ -172,7 +171,6 @@ export async function insertDomainTest(testRunId, testMetadata, performanceMetri
     JSON.stringify(httpResponseCodes),
     testMetadata.screenshotPath,
     testMetadata.harPath,
-    testMetadata.screenshotPath.replace('screenshot.png', 'report.txt'),
     screenshotData,
     harData
   ];
