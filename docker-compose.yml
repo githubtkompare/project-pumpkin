@@ -1,4 +1,25 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: project-pumpkin-db
+    environment:
+      - POSTGRES_USER=pumpkin
+      - POSTGRES_PASSWORD=pumpkin_password
+      - POSTGRES_DB=playwright_metrics
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - playwright-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pumpkin -d playwright_metrics"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
   app:
     build: .
     ports:
@@ -6,8 +27,12 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3000
+      - DATABASE_URL=postgresql://pumpkin:pumpkin_password@postgres:5432/playwright_metrics
     command: npm start
     restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
       - playwright-network
 
@@ -21,13 +46,22 @@ services:
       - ./test-domains-parallel.sh:/app/test-domains-parallel.sh  # Mount parallel test script
       - ./tests:/app/tests  # Mount entire tests directory for updated test files
       - ./playwright.config.js:/app/playwright.config.js  # Mount config
+      - ./src:/app/src  # Mount src directory for database modules
     environment:
       - TEST_URL=${TEST_URL:-https://www.uchicago.edu/}
+      - DATABASE_URL=postgresql://pumpkin:pumpkin_password@postgres:5432/playwright_metrics
     working_dir: /app
     depends_on:
-      - app
+      postgres:
+        condition: service_healthy
+      app:
+        condition: service_started
     networks:
       - playwright-network
+
+volumes:
+  postgres-data:
+    driver: local
 
 networks:
   playwright-network:

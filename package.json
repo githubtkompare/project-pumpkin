@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Self-contained Docker application",
   "main": "src/index.js",
+  "type": "module",
   "scripts": {
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
@@ -11,11 +12,16 @@
     "docker:run": "docker run -p 3000:3000 project-pumpkin",
     "docker:shell": "docker-compose run --rm playwright",
     "docker:test": "docker-compose run --rm playwright npx playwright test --project=firefox",
-    "docker:compose": "docker-compose up"
+    "docker:compose": "docker-compose up",
+    "db:query": "node src/database/cli.js",
+    "db:report": "node src/reports/generate.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "dependencies": {
+    "pg": "^8.13.1"
+  },
   "devDependencies": {
     "@playwright/test": "1.48.2"
   }

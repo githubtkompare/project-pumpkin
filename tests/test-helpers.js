@@ -1,6 +1,8 @@
 // @ts-check
 import { promises as fs } from 'fs';
 import path from 'path';
+import { initializePool, isDatabaseConnected } from '../src/database/client.js';
+import { insertDomainTest, getTestRunIdFromEnv } from '../src/database/ingest.js';
 
 /**
  * Auto-scroll function to trigger lazy-loaded images and content
@@ -312,6 +314,33 @@ ${'='.repeat(70)}
   console.log(`  - HAR file: network.har`);
   console.log(`  - Report: report.txt`);
   console.log(`${'='.repeat(70)}`);
+
+  // Store results in database if connection is available
+  try {
+    // Initialize database connection if not already done
+    await initializePool();
+
+    if (isDatabaseConnected()) {
+      const testRunId = getTestRunIdFromEnv();
+      console.log('Storing test results in database...');
+
+      const domainTestId = await insertDomainTest(
+        testRunId,
+        testMetadata,
+        performanceMetrics,
+        httpResponseCodes,
+        false // Don't store binary files in DB by default
+      );
+
+      if (domainTestId) {
+        console.log(`✓ Test results stored in database (ID: ${domainTestId})`);
+      }
+    } else {
+      console.log('⚠ Database not available - results saved to filesystem only');
+    }
+  } catch (dbError) {
+    console.warn('Database storage failed (results still saved to filesystem):', dbError.message);
+  }
 
   return testMetadata;
 }
