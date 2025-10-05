@@ -89,6 +89,36 @@ async function collectPerformanceMetrics(page) {
   });
 }
 
+/**
+ * Parse HAR file and extract HTTP response code statistics
+ */
+async function parseHttpResponseCodes(harPath) {
+  try {
+    const harContent = await fs.readFile(harPath, 'utf-8');
+    const harData = JSON.parse(harContent);
+
+    const statusCodeCounts = {};
+
+    // Extract response status codes from HAR entries
+    if (harData.log && harData.log.entries) {
+      harData.log.entries.forEach(entry => {
+        if (entry.response && entry.response.status) {
+          const statusCode = entry.response.status;
+          // Ignore -1 status codes (failed/aborted requests)
+          if (statusCode > 0) {
+            statusCodeCounts[statusCode] = (statusCodeCounts[statusCode] || 0) + 1;
+          }
+        }
+      });
+    }
+
+    return statusCodeCounts;
+  } catch (error) {
+    console.error(`Error parsing HAR file: ${error.message}`);
+    return {};
+  }
+}
+
 test.describe('Website Screenshot Test', () => {
   test('navigate to website and capture full page screenshot with performance metrics', async ({ browser }) => {
     // Set test timeout to 2 minutes for slow-loading pages
@@ -171,6 +201,10 @@ test.describe('Website Screenshot Test', () => {
 
     const testDuration = Date.now() - testStartTime;
 
+    // Parse HTTP response codes from HAR file
+    console.log('Parsing HTTP response codes from HAR file...');
+    const httpResponseCodes = await parseHttpResponseCodes(harPath);
+
     // Gather test metadata
     const testMetadata = {
       timestamp: new Date().toISOString(),
@@ -238,6 +272,24 @@ ${Object.entries(performanceMetrics.resources.byType)
   .sort((a, b) => b[1] - a[1])
   .map(([type, count]) => `  ${type.padEnd(20)} ${count}`)
   .join('\n')}
+
+${'='.repeat(70)}
+HTTP RESPONSE CODE SUMMARY
+${'='.repeat(70)}
+${Object.entries(httpResponseCodes).length > 0
+  ? Object.entries(httpResponseCodes)
+      .sort((a, b) => parseInt(a[0]) - parseInt(b[0]))
+      .map(([code, count]) => {
+        const codeInt = parseInt(code);
+        let category = '';
+        if (codeInt >= 200 && codeInt < 300) category = '(Success)';
+        else if (codeInt >= 300 && codeInt < 400) category = '(Redirect)';
+        else if (codeInt >= 400 && codeInt < 500) category = '(Client Error)';
+        else if (codeInt >= 500) category = '(Server Error)';
+        return `  ${code} ${category.padEnd(16)} ${count} ${count === 1 ? 'response' : 'responses'}`;
+      })
+      .join('\n')
+  : '  No HTTP response data available'}
 
 ${'='.repeat(70)}
 OUTPUT FILES

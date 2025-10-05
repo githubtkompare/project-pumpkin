@@ -36,12 +36,12 @@ if [ $EXIT_CODE -eq 0 ]; then
     echo "✓ All tests completed successfully!"
 else
     echo "⚠ Some tests failed (exit code: $EXIT_CODE)"
-    echo "  Check the HTML report for details:"
-    echo "  npx playwright show-report"
 fi
 echo "========================================================================"
 echo "Results saved to test-history/"
-echo "To view detailed report: npx playwright show-report"
+echo ""
+echo "To view detailed HTML report (opens browser):"
+echo "  npx playwright show-report"
 echo "========================================================================"
 
 exit $EXIT_CODE
