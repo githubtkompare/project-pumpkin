@@ -92,7 +92,7 @@ CREATE TABLE IF NOT EXISTS domain_tests (
     -- File references (paths within container)
     screenshot_path TEXT NOT NULL,
     har_path TEXT NOT NULL,
-    report_path TEXT NOT NULL,
+    report_path TEXT,  -- Nullable - no longer generated as of report.txt removal
 
     -- Binary data (optional - can store files directly in DB)
     -- For now we'll store paths only, but these columns are ready if needed

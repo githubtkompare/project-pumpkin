@@ -24,24 +24,41 @@ echo "Expected time:  ~2-3 minutes (vs ~9-10 minutes sequential)"
 echo "========================================================================"
 echo ""
 
-# Create test run in database and get TEST_RUN_ID
-echo "Creating test run record in database..."
-TEST_RUN_RESULT=$(node src/database/create-test-run.js "$TOTAL" "$WORKERS" "Parallel test run from test-domains-parallel.sh")
-
-export TEST_RUN_ID="$TEST_RUN_RESULT"
-
-if [ "$TEST_RUN_ID" != "0" ] && [ -n "$TEST_RUN_ID" ]; then
-    echo "✓ Test run created with ID: $TEST_RUN_ID"
-    # Ensure TEST_RUN_ID is available to child processes
-    export TEST_RUN_ID
-else
-    echo "⚠ Database not available - continuing without database tracking"
+# Wait for database to be ready
+echo "Checking database connectivity..."
+if ! node src/database/wait-for-db.js 30; then
+    echo ""
+    echo "⚠ Warning: Database not available"
+    echo "Tests will run but results will NOT be saved to database"
+    echo "Only screenshots and HAR files will be saved to test-history/"
+    echo ""
+    read -p "Continue anyway? (y/N) " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        echo "Aborted."
+        exit 1
+    fi
     export TEST_RUN_ID=""
+else
+    echo ""
+    # Create test run in database and get TEST_RUN_ID
+    echo "Creating test run record in database..."
+    TEST_RUN_RESULT=$(node src/database/create-test-run.js "$TOTAL" "$WORKERS" "Parallel test run from test-domains-parallel.sh")
+
+    export TEST_RUN_ID="$TEST_RUN_RESULT"
+
+    if [ "$TEST_RUN_ID" != "0" ] && [ -n "$TEST_RUN_ID" ]; then
+        echo "✓ Test run created with ID: $TEST_RUN_ID"
+        # Ensure TEST_RUN_ID is available to child processes
+        export TEST_RUN_ID
+    else
+        echo "⚠ Database not available - continuing without database tracking"
+        export TEST_RUN_ID=""
+    fi
+
+    echo "DEBUG: TEST_RUN_ID is set to: $TEST_RUN_ID"
+    echo ""
 fi
-
-echo "DEBUG: TEST_RUN_ID is set to: $TEST_RUN_ID"
-
-echo ""
 
 # Record start time
 START_TIME=$(date +%s%3N)
