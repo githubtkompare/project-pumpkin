@@ -95,7 +95,7 @@ function displayLatestRun(run) {
         <div class="col-md-6">
           <h5 class="card-title">Run #${run.id} ${getStatusBadge(run)}</h5>
           <p class="card-text mb-1"><strong>Timestamp:</strong> ${formatTimestamp(run.run_timestamp)}</p>
-          <p class="card-text mb-1"><strong>Total Domains:</strong> ${run.total_domains}</p>
+          <p class="card-text mb-1"><strong>Total URLs:</strong> ${run.total_urls}</p>
           <p class="card-text mb-1"><strong>Parallel Workers:</strong> ${run.parallel_workers}</p>
           <p class="card-text mb-1"><strong>Duration:</strong> ${formatDuration(run.duration_ms)}</p>
         </div>
@@ -147,7 +147,7 @@ function displayTestRuns(runs) {
       <td>${run.id}</td>
       <td>${formatTimestamp(run.run_timestamp)}</td>
       <td>${getStatusBadge(run)}</td>
-      <td>${run.total_domains}</td>
+      <td>${run.total_urls}</td>
       <td class="text-success">${run.passed_count || 0}</td>
       <td class="text-danger">${run.failed_count || 0}</td>
       <td>${formatNumber(run.avg_page_load_ms)} ms</td>
@@ -252,7 +252,7 @@ function displayDateSearchResults(date, runs) {
       <td>${run.id}</td>
       <td>${formatTimestamp(run.run_timestamp)}</td>
       <td>${getStatusBadge(run)}</td>
-      <td>${run.total_domains}</td>
+      <td>${run.total_urls}</td>
       <td class="text-success">${run.passed_count || 0}</td>
       <td class="text-danger">${run.failed_count || 0}</td>
       <td>${formatNumber(run.avg_page_load_ms)} ms</td>

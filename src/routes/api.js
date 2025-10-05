@@ -2,12 +2,12 @@
 import express from 'express';
 import {
   getAllTestRuns,
-  getDomainTestsByRun,
-  getDomainTestById,
+  getUrlTestsByRun,
+  getUrlTestById,
   getLatestTestRun,
   getLatestRunAverages,
-  getSlowestDomains,
-  getFastestDomains,
+  getSlowestUrls,
+  getFastestUrls,
   getTestsWithErrors,
   getFailedRequests,
   getFailedRequestsByTestId,
@@ -70,51 +70,51 @@ router.get('/test-runs/:id', async (req, res) => {
 });
 
 /**
- * GET /api/test-runs/:id/domains
- * Get all domain tests for a specific test run
+ * GET /api/test-runs/:id/urls
+ * Get all URL tests for a specific test run
  */
-router.get('/test-runs/:id/domains', async (req, res) => {
+router.get('/test-runs/:id/urls', async (req, res) => {
   try {
     const testRunId = parseInt(req.params.id);
-    const domains = await getDomainTestsByRun(testRunId);
-    res.json({ success: true, data: domains });
+    const urls = await getUrlTestsByRun(testRunId);
+    res.json({ success: true, data: urls });
   } catch (error) {
-    console.error('API Error - /test-runs/:id/domains:', error);
+    console.error('API Error - /test-runs/:id/urls:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
 /**
- * GET /api/domain-tests/:id
- * Get a single domain test with all details
+ * GET /api/url-tests/:id
+ * Get a single URL test with all details
  */
-router.get('/domain-tests/:id', async (req, res) => {
+router.get('/url-tests/:id', async (req, res) => {
   try {
     const testId = parseInt(req.params.id);
-    const test = await getDomainTestById(testId);
+    const test = await getUrlTestById(testId);
 
     if (!test) {
-      return res.status(404).json({ success: false, error: 'Domain test not found' });
+      return res.status(404).json({ success: false, error: 'URL test not found' });
     }
 
     res.json({ success: true, data: test });
   } catch (error) {
-    console.error('API Error - /domain-tests/:id:', error);
+    console.error('API Error - /url-tests/:id:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
 /**
- * GET /api/domain-tests/:id/failed-requests
- * Get failed HTTP requests (400+) for a specific domain test
+ * GET /api/url-tests/:id/failed-requests
+ * Get failed HTTP requests (400+) for a specific URL test
  */
-router.get('/domain-tests/:id/failed-requests', async (req, res) => {
+router.get('/url-tests/:id/failed-requests', async (req, res) => {
   try {
     const testId = parseInt(req.params.id);
     const failedRequests = await getFailedRequestsByTestId(testId);
     res.json({ success: true, data: failedRequests });
   } catch (error) {
-    console.error('API Error - /domain-tests/:id/failed-requests:', error);
+    console.error('API Error - /url-tests/:id/failed-requests:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -138,12 +138,12 @@ router.get('/stats/latest', async (req, res) => {
 
 /**
  * GET /api/stats/slowest
- * Get slowest domains from latest test run
+ * Get slowest URLs from latest test run
  */
 router.get('/stats/slowest', async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 10;
-    const slowest = await getSlowestDomains(limit);
+    const slowest = await getSlowestUrls(limit);
     res.json({ success: true, data: slowest });
   } catch (error) {
     console.error('API Error - /stats/slowest:', error);
@@ -153,12 +153,12 @@ router.get('/stats/slowest', async (req, res) => {
 
 /**
  * GET /api/stats/fastest
- * Get fastest domains from latest test run
+ * Get fastest URLs from latest test run
  */
 router.get('/stats/fastest', async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 10;
-    const fastest = await getFastestDomains(limit);
+    const fastest = await getFastestUrls(limit);
     res.json({ success: true, data: fastest });
   } catch (error) {
     console.error('API Error - /stats/fastest:', error);

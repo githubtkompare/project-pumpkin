@@ -21,7 +21,7 @@ Represents each execution of `test-domains-parallel.sh`
 | id | SERIAL | Primary key |
 | run_uuid | UUID | Unique identifier for this run |
 | run_timestamp | TIMESTAMPTZ | When the run started |
-| total_domains | INTEGER | Number of domains to test |
+| total_urls | INTEGER | Number of domains to test |
 | parallel_workers | INTEGER | Number of parallel workers used |
 | duration_ms | INTEGER | Total duration in milliseconds |
 | passed_count | INTEGER | Number of passed tests |
@@ -29,8 +29,8 @@ Represents each execution of `test-domains-parallel.sh`
 | status | VARCHAR(20) | RUNNING, COMPLETED, PARTIAL, FAILED |
 | notes | TEXT | Optional notes about this run |
 
-#### `domain_tests`
-Individual domain test results within a test run
+#### `url_tests`
+Individual URL test results within a test run
 
 | Column | Type | Description |
 |--------|------|-------------|
@@ -74,7 +74,7 @@ Normalized HTTP response codes (alternative to JSONB)
 | Column | Type | Description |
 |--------|------|-------------|
 | id | SERIAL | Primary key |
-| domain_test_id | INTEGER | Foreign key to domain_tests |
+| url_test_id | INTEGER | Foreign key to url_tests |
 | status_code | INTEGER | HTTP status code (200, 404, etc.) |
 | response_count | INTEGER | Number of responses with this code |
 
@@ -84,7 +84,7 @@ Normalized resource types (alternative to JSONB)
 | Column | Type | Description |
 |--------|------|-------------|
 | id | SERIAL | Primary key |
-| domain_test_id | INTEGER | Foreign key to domain_tests |
+| url_test_id | INTEGER | Foreign key to url_tests |
 | resource_type | VARCHAR(50) | Resource type (script, img, css, etc.) |
 | resource_count | INTEGER | Number of resources of this type |
 
@@ -199,7 +199,7 @@ SELECT
     dt.total_page_load_ms,
     dt.time_to_first_byte_ms,
     dt.status
-FROM domain_tests dt
+FROM url_tests dt
 JOIN test_runs tr ON tr.id = dt.test_run_id
 WHERE dt.domain = 'www.uchicago.edu'
 ORDER BY tr.run_timestamp DESC
@@ -217,7 +217,7 @@ SELECT
     AVG(total_page_load_ms) as avg_load,
     AVG(time_to_first_byte_ms) as avg_ttfb,
     AVG(total_resources) as avg_resources
-FROM domain_tests
+FROM url_tests
 WHERE test_run_id = (
     SELECT id FROM test_runs
     ORDER BY run_timestamp DESC
@@ -231,7 +231,7 @@ SELECT
     domain,
     COUNT(*) as tests_with_404s,
     (http_response_codes->>'404')::int as count_404s
-FROM domain_tests
+FROM url_tests
 WHERE http_response_codes ? '404'
 GROUP BY domain, http_response_codes
 ORDER BY (http_response_codes->>'404')::int DESC
@@ -256,7 +256,7 @@ LIMIT 10;
      - Performance metrics collected
      - HAR file parsed for HTTP codes
      - Screenshot saved
-     - Data inserted into `domain_tests` table
+     - Data inserted into `url_tests` table
      - `test_runs` counts auto-updated via trigger
 
 4. **Complete Test Run**
@@ -300,7 +300,7 @@ gunzip -c backup.sql.gz | docker exec -i project-pumpkin-db psql -U pumpkin -d p
 ### Clear Old Data
 
 ```sql
--- Delete test runs older than 30 days (cascades to domain_tests)
+-- Delete test runs older than 30 days (cascades to url_tests)
 DELETE FROM test_runs
 WHERE run_timestamp < NOW() - INTERVAL '30 days';
 
@@ -394,7 +394,7 @@ docker-compose up -d
 \timing
 
 -- Analyze a query
-EXPLAIN ANALYZE SELECT * FROM domain_tests WHERE domain = 'www.uchicago.edu';
+EXPLAIN ANALYZE SELECT * FROM url_tests WHERE domain = 'www.uchicago.edu';
 ```
 
 ## Security Notes

@@ -85,18 +85,18 @@ async function fetchRunSummary(runId) {
   }
 }
 
-async function fetchDomainTests(runId) {
+async function fetchUrlTests(runId) {
   try {
-    const response = await fetch(`/api/test-runs/${runId}/domains`);
+    const response = await fetch(`/api/test-runs/${runId}/urls`);
     const result = await response.json();
     if (result.success) {
-      displayDomainTests(result.data);
+      displayUrlTests(result.data);
     } else {
-      displayTableError('No domain tests found');
+      displayTableError('No URL tests found');
     }
   } catch (error) {
-    console.error('Failed to fetch domain tests:', error);
-    displayTableError('Failed to load domain tests');
+    console.error('Failed to fetch URL tests:', error);
+    displayTableError('Failed to load URL tests');
   }
 }
 
@@ -126,7 +126,7 @@ function displayRunSummary(run) {
   `;
 }
 
-function displayDomainTests(tests) {
+function displayUrlTests(tests) {
   const tbody = document.querySelector('#domain-tests-table tbody');
 
   if (tests.length === 0) {
@@ -199,5 +199,5 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   fetchRunSummary(runId);
-  fetchDomainTests(runId);
+  fetchUrlTests(runId);
 });

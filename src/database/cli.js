@@ -12,17 +12,17 @@ import * as queries from './queries.js';
 const COMMANDS = {
   latest: 'Show latest test run summary',
   runs: 'Show all test runs (optional: limit)',
-  domains: 'Show domain tests for a test run (requires: runId)',
+  urls: 'Show URL tests for a test run (requires: runId)',
   trend: 'Show performance trend for a domain (requires: domain, optional: limit)',
   errors: 'Show tests with errors (optional: limit)',
-  '404s': 'Show domains with most 404 errors (optional: limit)',
+  '404s': 'Show URLs with most 404 errors (optional: limit)',
   'failed-requests': 'Show HTTP 400+ failed request details (optional: limit)',
-  slowest: 'Show slowest domains from latest run (optional: limit)',
-  fastest: 'Show fastest domains from latest run (optional: limit)',
+  slowest: 'Show slowest URLs from latest run (optional: limit)',
+  fastest: 'Show fastest URLs from latest run (optional: limit)',
   compare: 'Compare two test runs (requires: runId1, runId2)',
   averages: 'Show average metrics for latest run',
   codes: 'Show tests grouped by HTTP status code (optional: runId)',
-  search: 'Search domain tests by URL pattern (requires: pattern, optional: limit)',
+  search: 'Search URL tests by URL pattern (requires: pattern, optional: limit)',
   help: 'Show this help message'
 };
 
@@ -54,13 +54,13 @@ async function main() {
         await showAllRuns(runLimit);
         break;
 
-      case 'domains':
+      case 'urls':
         const runId = parseInt(args[1]);
         if (!runId) {
           console.error('Error: runId required');
           process.exit(1);
         }
-        await showDomainTests(runId);
+        await showUrlTests(runId);
         break;
 
       case 'trend':
@@ -80,7 +80,7 @@ async function main() {
 
       case '404s':
         const notFoundLimit = parseInt(args[1]) || 10;
-        await showDomainsWith404s(notFoundLimit);
+        await showUrlsWith404s(notFoundLimit);
         break;
 
       case 'failed-requests':
@@ -90,12 +90,12 @@ async function main() {
 
       case 'slowest':
         const slowLimit = parseInt(args[1]) || 10;
-        await showSlowestDomains(slowLimit);
+        await showSlowestUrls(slowLimit);
         break;
 
       case 'fastest':
         const fastLimit = parseInt(args[1]) || 10;
-        await showFastestDomains(fastLimit);
+        await showFastestUrls(fastLimit);
         break;
 
       case 'compare':
@@ -124,7 +124,7 @@ async function main() {
           process.exit(1);
         }
         const searchLimit = parseInt(args[2]) || 20;
-        await searchDomains(pattern, searchLimit);
+        await searchUrls(pattern, searchLimit);
         break;
 
       default:
@@ -172,7 +172,7 @@ async function showLatestRun() {
   console.log(`UUID:               ${run.run_uuid}`);
   console.log(`Timestamp:          ${run.run_timestamp}`);
   console.log(`Status:             ${run.status}`);
-  console.log(`Total Domains:      ${run.total_domains}`);
+  console.log(`Total URLs:         ${run.total_urls}`);
   console.log(`Tests Completed:    ${run.tests_completed}`);
   console.log(`Passed:             ${run.passed_count}`);
   console.log(`Failed:             ${run.failed_count}`);
@@ -208,14 +208,14 @@ async function showAllRuns(limit) {
   console.log('');
 }
 
-async function showDomainTests(runId) {
-  const tests = await queries.getDomainTestsByRun(runId);
+async function showUrlTests(runId) {
+  const tests = await queries.getUrlTestsByRun(runId);
   if (tests.length === 0) {
-    console.log(`No domain tests found for run ID ${runId}`);
+    console.log(`No URL tests found for run ID ${runId}`);
     return;
   }
 
-  console.log(`\nDomain tests for run ID ${runId} (${tests.length} tests):\n`);
+  console.log(`\nURL tests for run ID ${runId} (${tests.length} tests):\n`);
   console.log('Domain'.padEnd(35) + 'Status'.padEnd(10) + 'Load (ms)'.padEnd(12) + 'TTFB (ms)'.padEnd(12) + 'Resources');
   console.log('─'.repeat(100));
 
@@ -273,22 +273,22 @@ async function showTestsWithErrors(limit) {
   console.log('');
 }
 
-async function showDomainsWith404s(limit) {
-  const domains = await queries.getDomainsWithMost404s(limit);
-  if (domains.length === 0) {
-    console.log('No domains with 404 errors found');
+async function showUrlsWith404s(limit) {
+  const urls = await queries.getUrlsWithMost404s(limit);
+  if (urls.length === 0) {
+    console.log('No URLs with 404 errors found');
     return;
   }
 
-  console.log(`\nDomains with most 404 errors (${domains.length} found):\n`);
+  console.log(`\nURLs with most 404 errors (${urls.length} found):\n`);
   console.log('Domain'.padEnd(35) + '404 Count'.padEnd(12) + 'Last Seen');
   console.log('─'.repeat(80));
 
-  domains.forEach(domain => {
+  urls.forEach(url => {
     console.log(
-      domain.domain.padEnd(35) +
-      String(domain.count_404s).padEnd(12) +
-      domain.last_seen.toISOString()
+      url.domain.padEnd(35) +
+      String(url.count_404s).padEnd(12) +
+      url.last_seen.toISOString()
     );
   });
   console.log('');
@@ -330,45 +330,45 @@ async function showFailedRequests(limit) {
   console.log('');
 }
 
-async function showSlowestDomains(limit) {
-  const domains = await queries.getSlowestDomains(limit);
-  if (domains.length === 0) {
-    console.log('No domain data found');
+async function showSlowestUrls(limit) {
+  const urls = await queries.getSlowestUrls(limit);
+  if (urls.length === 0) {
+    console.log('No URL data found');
     return;
   }
 
-  console.log(`\nSlowest ${limit} domains from latest run:\n`);
+  console.log(`\nSlowest ${limit} URLs from latest run:\n`);
   console.log('Domain'.padEnd(35) + 'Page Load (ms)'.padEnd(16) + 'TTFB (ms)'.padEnd(12) + 'Resources');
   console.log('─'.repeat(100));
 
-  domains.forEach(domain => {
+  urls.forEach(url => {
     console.log(
-      domain.domain.padEnd(35) +
-      String(domain.total_page_load_ms).padEnd(16) +
-      String(domain.time_to_first_byte_ms).padEnd(12) +
-      domain.total_resources
+      url.domain.padEnd(35) +
+      String(url.total_page_load_ms).padEnd(16) +
+      String(url.time_to_first_byte_ms).padEnd(12) +
+      url.total_resources
     );
   });
   console.log('');
 }
 
-async function showFastestDomains(limit) {
-  const domains = await queries.getFastestDomains(limit);
-  if (domains.length === 0) {
-    console.log('No domain data found');
+async function showFastestUrls(limit) {
+  const urls = await queries.getFastestUrls(limit);
+  if (urls.length === 0) {
+    console.log('No URL data found');
     return;
   }
 
-  console.log(`\nFastest ${limit} domains from latest run:\n`);
+  console.log(`\nFastest ${limit} URLs from latest run:\n`);
   console.log('Domain'.padEnd(35) + 'Page Load (ms)'.padEnd(16) + 'TTFB (ms)'.padEnd(12) + 'Resources');
   console.log('─'.repeat(100));
 
-  domains.forEach(domain => {
+  urls.forEach(url => {
     console.log(
-      domain.domain.padEnd(35) +
-      String(domain.total_page_load_ms).padEnd(16) +
-      String(domain.time_to_first_byte_ms).padEnd(12) +
-      domain.total_resources
+      url.domain.padEnd(35) +
+      String(url.total_page_load_ms).padEnd(16) +
+      String(url.time_to_first_byte_ms).padEnd(12) +
+      url.total_resources
     );
   });
   console.log('');
@@ -443,10 +443,10 @@ async function showStatusCodes(runId) {
   console.log('');
 }
 
-async function searchDomains(pattern, limit) {
-  const results = await queries.searchDomainTests(pattern, limit);
+async function searchUrls(pattern, limit) {
+  const results = await queries.searchUrlTests(pattern, limit);
   if (results.length === 0) {
-    console.log(`No domains found matching pattern: ${pattern}`);
+    console.log(`No URLs found matching pattern: ${pattern}`);
     return;
   }
 

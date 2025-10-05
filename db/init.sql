@@ -2,11 +2,11 @@
 -- Project Pumpkin - Playwright Metrics Database Schema
 -- ============================================================================
 -- This schema stores performance metrics, screenshots, and HAR files from
--- Playwright website tests run via test-domains-parallel.sh
+-- Playwright website tests run via test-urls-parallel.sh
 --
 -- Design principles:
 -- 1. Test runs are grouped (each script execution = one test_run)
--- 2. Individual domain tests link to their test run
+-- 2. Individual URL tests link to their test run
 -- 3. Metrics stored as individual columns for efficient querying
 -- 4. Binary data (screenshots, HAR) stored with filesystem paths
 -- 5. HTTP codes and resource types stored as JSONB for flexibility
@@ -17,13 +17,13 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- ============================================================================
 -- Table: test_runs
--- Represents each execution of test-domains-parallel.sh
+-- Represents each execution of test-urls-parallel.sh
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS test_runs (
     id SERIAL PRIMARY KEY,
     run_uuid UUID DEFAULT uuid_generate_v4() UNIQUE NOT NULL,
     run_timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    total_domains INTEGER NOT NULL,
+    total_urls INTEGER NOT NULL,
     parallel_workers INTEGER NOT NULL DEFAULT 4,
     duration_ms INTEGER,
     passed_count INTEGER DEFAULT 0,
@@ -39,10 +39,10 @@ CREATE INDEX idx_test_runs_status ON test_runs(status);
 CREATE INDEX idx_test_runs_uuid ON test_runs(run_uuid);
 
 -- ============================================================================
--- Table: domain_tests
--- Individual domain test results within a test run
+-- Table: url_tests
+-- Individual URL test results within a test run
 -- ============================================================================
-CREATE TABLE IF NOT EXISTS domain_tests (
+CREATE TABLE IF NOT EXISTS url_tests (
     id SERIAL PRIMARY KEY,
     test_run_id INTEGER NOT NULL REFERENCES test_runs(id) ON DELETE CASCADE,
 
@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS domain_tests (
     test_uuid UUID DEFAULT uuid_generate_v4() UNIQUE NOT NULL,
     test_timestamp TIMESTAMPTZ NOT NULL,
     url VARCHAR(2048) NOT NULL,
-    domain VARCHAR(512) NOT NULL,
+    domain VARCHAR(512) NOT NULL,  -- Extracted hostname for indexing
 
     -- Test metadata
     browser VARCHAR(50) NOT NULL,
@@ -102,18 +102,18 @@ CREATE TABLE IF NOT EXISTS domain_tests (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_domain_tests_run ON domain_tests(test_run_id);
-CREATE INDEX idx_domain_tests_timestamp ON domain_tests(test_timestamp DESC);
-CREATE INDEX idx_domain_tests_url ON domain_tests(url);
-CREATE INDEX idx_domain_tests_domain ON domain_tests(domain);
-CREATE INDEX idx_domain_tests_status ON domain_tests(status);
-CREATE INDEX idx_domain_tests_uuid ON domain_tests(test_uuid);
-CREATE INDEX idx_domain_tests_page_load ON domain_tests(total_page_load_ms);
-CREATE INDEX idx_domain_tests_ttfb ON domain_tests(time_to_first_byte_ms);
+CREATE INDEX idx_url_tests_run ON url_tests(test_run_id);
+CREATE INDEX idx_url_tests_timestamp ON url_tests(test_timestamp DESC);
+CREATE INDEX idx_url_tests_url ON url_tests(url);
+CREATE INDEX idx_url_tests_domain ON url_tests(domain);
+CREATE INDEX idx_url_tests_status ON url_tests(status);
+CREATE INDEX idx_url_tests_uuid ON url_tests(test_uuid);
+CREATE INDEX idx_url_tests_page_load ON url_tests(total_page_load_ms);
+CREATE INDEX idx_url_tests_ttfb ON url_tests(time_to_first_byte_ms);
 
 -- GIN index for JSONB columns to enable efficient querying
-CREATE INDEX idx_domain_tests_http_codes ON domain_tests USING GIN (http_response_codes);
-CREATE INDEX idx_domain_tests_resources ON domain_tests USING GIN (resources_by_type);
+CREATE INDEX idx_url_tests_http_codes ON url_tests USING GIN (http_response_codes);
+CREATE INDEX idx_url_tests_resources ON url_tests USING GIN (resources_by_type);
 
 -- ============================================================================
 -- Table: http_responses (normalized alternative to JSON)
@@ -121,13 +121,13 @@ CREATE INDEX idx_domain_tests_resources ON domain_tests USING GIN (resources_by_
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS http_responses (
     id SERIAL PRIMARY KEY,
-    domain_test_id INTEGER NOT NULL REFERENCES domain_tests(id) ON DELETE CASCADE,
+    url_test_id INTEGER NOT NULL REFERENCES url_tests(id) ON DELETE CASCADE,
     status_code INTEGER NOT NULL,
     response_count INTEGER NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_http_responses_test ON http_responses(domain_test_id);
+CREATE INDEX idx_http_responses_test ON http_responses(url_test_id);
 CREATE INDEX idx_http_responses_code ON http_responses(status_code);
 CREATE INDEX idx_http_responses_code_range ON http_responses(status_code) WHERE status_code >= 400;
 
@@ -137,13 +137,13 @@ CREATE INDEX idx_http_responses_code_range ON http_responses(status_code) WHERE 
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS resource_types (
     id SERIAL PRIMARY KEY,
-    domain_test_id INTEGER NOT NULL REFERENCES domain_tests(id) ON DELETE CASCADE,
+    url_test_id INTEGER NOT NULL REFERENCES url_tests(id) ON DELETE CASCADE,
     resource_type VARCHAR(50) NOT NULL,
     resource_count INTEGER NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_resource_types_test ON resource_types(domain_test_id);
+CREATE INDEX idx_resource_types_test ON resource_types(url_test_id);
 CREATE INDEX idx_resource_types_type ON resource_types(resource_type);
 
 -- ============================================================================
@@ -156,19 +156,19 @@ SELECT
     tr.id,
     tr.run_uuid,
     tr.run_timestamp,
-    tr.total_domains,
+    tr.total_urls,
     tr.parallel_workers,
     tr.duration_ms,
     tr.passed_count,
     tr.failed_count,
     tr.status,
-    COUNT(dt.id) as tests_completed,
-    ROUND(AVG(dt.total_page_load_ms)::numeric, 2) as avg_page_load_ms,
-    ROUND(AVG(dt.time_to_first_byte_ms)::numeric, 2) as avg_ttfb_ms,
-    MIN(dt.test_timestamp) as first_test_at,
-    MAX(dt.test_timestamp) as last_test_at
+    COUNT(ut.id) as tests_completed,
+    ROUND(AVG(ut.total_page_load_ms)::numeric, 2) as avg_page_load_ms,
+    ROUND(AVG(ut.time_to_first_byte_ms)::numeric, 2) as avg_ttfb_ms,
+    MIN(ut.test_timestamp) as first_test_at,
+    MAX(ut.test_timestamp) as last_test_at
 FROM test_runs tr
-LEFT JOIN domain_tests dt ON dt.test_run_id = tr.id
+LEFT JOIN url_tests ut ON ut.test_run_id = tr.id
 GROUP BY tr.id
 ORDER BY tr.run_timestamp DESC
 LIMIT 1;
@@ -176,38 +176,38 @@ LIMIT 1;
 -- Performance comparison across runs
 CREATE OR REPLACE VIEW v_performance_trends AS
 SELECT
-    dt.domain,
-    dt.url,
+    ut.domain,
+    ut.url,
     tr.run_timestamp,
-    dt.total_page_load_ms,
-    dt.time_to_first_byte_ms,
-    dt.dns_lookup_ms,
-    dt.tcp_connection_ms,
-    dt.total_resources,
-    dt.total_transfer_size_bytes,
-    dt.status,
+    ut.total_page_load_ms,
+    ut.time_to_first_byte_ms,
+    ut.dns_lookup_ms,
+    ut.tcp_connection_ms,
+    ut.total_resources,
+    ut.total_transfer_size_bytes,
+    ut.status,
     tr.id as test_run_id
-FROM domain_tests dt
-JOIN test_runs tr ON tr.id = dt.test_run_id
-ORDER BY dt.domain, tr.run_timestamp DESC;
+FROM url_tests ut
+JOIN test_runs tr ON tr.id = ut.test_run_id
+ORDER BY ut.domain, tr.run_timestamp DESC;
 
 -- Tests with errors (4xx/5xx responses)
 CREATE OR REPLACE VIEW v_tests_with_errors AS
 SELECT
-    dt.id,
-    dt.test_timestamp,
-    dt.domain,
-    dt.url,
-    dt.page_title,
-    dt.status,
-    dt.http_response_codes,
+    ut.id,
+    ut.test_timestamp,
+    ut.domain,
+    ut.url,
+    ut.page_title,
+    ut.status,
+    ut.http_response_codes,
     tr.run_timestamp as run_timestamp
-FROM domain_tests dt
-JOIN test_runs tr ON tr.id = dt.test_run_id
+FROM url_tests ut
+JOIN test_runs tr ON tr.id = ut.test_run_id
 WHERE
-    dt.http_response_codes::text ~ '"[45][0-9]{2}"'  -- Regex to find 4xx or 5xx codes
-    OR dt.status != 'PASSED'
-ORDER BY dt.test_timestamp DESC;
+    ut.http_response_codes::text ~ '"[45][0-9]{2}"'  -- Regex to find 4xx or 5xx codes
+    OR ut.status != 'PASSED'
+ORDER BY ut.test_timestamp DESC;
 
 -- ============================================================================
 -- Triggers
@@ -227,7 +227,7 @@ BEFORE UPDATE ON test_runs
 FOR EACH ROW
 EXECUTE FUNCTION update_test_runs_timestamp();
 
--- Auto-update test_runs passed/failed counts when domain_tests are inserted
+-- Auto-update test_runs passed/failed counts when url_tests are inserted
 CREATE OR REPLACE FUNCTION update_test_run_counts()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -245,7 +245,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trigger_update_test_run_counts
-AFTER INSERT ON domain_tests
+AFTER INSERT ON url_tests
 FOR EACH ROW
 EXECUTE FUNCTION update_test_run_counts();
 
@@ -265,22 +265,23 @@ EXECUTE FUNCTION update_test_run_counts();
 -- Get average metrics for latest run
 -- SELECT
 --     tr.run_timestamp,
---     AVG(dt.total_page_load_ms) as avg_load_time,
---     AVG(dt.time_to_first_byte_ms) as avg_ttfb,
---     AVG(dt.total_resources) as avg_resources
+--     AVG(ut.total_page_load_ms) as avg_load_time,
+--     AVG(ut.time_to_first_byte_ms) as avg_ttfb,
+--     AVG(ut.total_resources) as avg_resources
 -- FROM test_runs tr
--- JOIN domain_tests dt ON dt.test_run_id = tr.id
+-- JOIN url_tests ut ON ut.test_run_id = tr.id
 -- WHERE tr.id = (SELECT id FROM test_runs ORDER BY run_timestamp DESC LIMIT 1)
 -- GROUP BY tr.id, tr.run_timestamp;
 
--- Find domains with most 404 errors
+-- Find URLs with most 404 errors
 -- SELECT
 --     domain,
+--     url,
 --     COUNT(*) as tests_with_404s,
 --     http_response_codes->'404' as count_404s
--- FROM domain_tests
+-- FROM url_tests
 -- WHERE http_response_codes ? '404'
--- GROUP BY domain, http_response_codes
+-- GROUP BY domain, url, http_response_codes
 -- ORDER BY (http_response_codes->>'404')::int DESC;
 
 -- ============================================================================

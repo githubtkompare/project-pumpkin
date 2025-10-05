@@ -34,16 +34,16 @@ async function generateReport() {
       printAverageMetrics(averages);
     }
 
-    // Slowest Domains
-    const slowest = await queries.getSlowestDomains(10);
+    // Slowest URLs
+    const slowest = await queries.getSlowestUrls(10);
     if (slowest.length > 0) {
-      printSlowestDomains(slowest);
+      printSlowestUrls(slowest);
     }
 
-    // Fastest Domains
-    const fastest = await queries.getFastestDomains(5);
+    // Fastest URLs
+    const fastest = await queries.getFastestUrls(5);
     if (fastest.length > 0) {
-      printFastestDomains(fastest);
+      printFastestUrls(fastest);
     }
 
     // Tests with Errors
@@ -53,7 +53,7 @@ async function generateReport() {
     }
 
     // 404 Errors
-    const notFound = await queries.getDomainsWithMost404s(10);
+    const notFound = await queries.getUrlsWithMost404s(10);
     if (notFound.length > 0) {
       print404Summary(notFound);
     }
@@ -95,7 +95,7 @@ function printLatestRunSummary(run) {
   console.log(`Test Run ID:        ${run.id}`);
   console.log(`Timestamp:          ${run.run_timestamp.toISOString()}`);
   console.log(`Status:             ${getStatusEmoji(run.status)} ${run.status}`);
-  console.log(`Total Domains:      ${run.total_domains}`);
+  console.log(`Total URLs:         ${run.total_urls}`);
   console.log(`Tests Completed:    ${run.tests_completed}`);
   console.log(`Success Rate:       ${run.passed_count}/${run.tests_completed} (${Math.round(run.passed_count / run.tests_completed * 100)}%)`);
   console.log(`Duration:           ${formatDuration(run.duration_ms)}`);
@@ -119,37 +119,37 @@ function printAverageMetrics(averages) {
   console.log('');
 }
 
-function printSlowestDomains(domains) {
+function printSlowestUrls(urls) {
   console.log('─'.repeat(70));
-  console.log('SLOWEST DOMAINS (Top 10)');
+  console.log('SLOWEST URLS (Top 10)');
   console.log('─'.repeat(70));
   console.log('Rank  Domain'.padEnd(42) + 'Load Time'.padEnd(14) + 'TTFB');
   console.log('─'.repeat(70));
 
-  domains.forEach((domain, index) => {
+  urls.forEach((url, index) => {
     const rank = `${index + 1}.`.padEnd(6);
-    const domainName = domain.domain.substring(0, 32).padEnd(36);
-    const loadTime = `${domain.total_page_load_ms}ms`.padEnd(14);
-    const ttfb = `${domain.time_to_first_byte_ms}ms`;
+    const domainName = url.domain.substring(0, 32).padEnd(36);
+    const loadTime = `${url.total_page_load_ms}ms`.padEnd(14);
+    const ttfb = `${url.time_to_first_byte_ms}ms`;
 
-    const emoji = getPerformanceEmoji(domain.total_page_load_ms);
+    const emoji = getPerformanceEmoji(url.total_page_load_ms);
     console.log(`${rank}${emoji} ${domainName}${loadTime}${ttfb}`);
   });
   console.log('');
 }
 
-function printFastestDomains(domains) {
+function printFastestUrls(urls) {
   console.log('─'.repeat(70));
-  console.log('FASTEST DOMAINS (Top 5)');
+  console.log('FASTEST URLS (Top 5)');
   console.log('─'.repeat(70));
   console.log('Rank  Domain'.padEnd(42) + 'Load Time'.padEnd(14) + 'TTFB');
   console.log('─'.repeat(70));
 
-  domains.forEach((domain, index) => {
+  urls.forEach((url, index) => {
     const rank = `${index + 1}.`.padEnd(6);
-    const domainName = domain.domain.substring(0, 32).padEnd(36);
-    const loadTime = `${domain.total_page_load_ms}ms`.padEnd(14);
-    const ttfb = `${domain.time_to_first_byte_ms}ms`;
+    const domainName = url.domain.substring(0, 32).padEnd(36);
+    const loadTime = `${url.total_page_load_ms}ms`.padEnd(14);
+    const ttfb = `${url.time_to_first_byte_ms}ms`;
 
     console.log(`${rank}⚡ ${domainName}${loadTime}${ttfb}`);
   });
@@ -177,18 +177,18 @@ function printTestsWithErrors(errors) {
   });
 }
 
-function print404Summary(domains) {
+function print404Summary(urls) {
   console.log('─'.repeat(70));
-  console.log('DOMAINS WITH 404 ERRORS');
+  console.log('URLS WITH 404 ERRORS');
   console.log('─'.repeat(70));
   console.log('Domain'.padEnd(40) + '404 Count'.padEnd(12) + 'Last Seen');
   console.log('─'.repeat(70));
 
-  domains.forEach(domain => {
+  urls.forEach(url => {
     console.log(
-      domain.domain.substring(0, 38).padEnd(40) +
-      String(domain.count_404s).padEnd(12) +
-      domain.last_seen.toISOString().substring(0, 19)
+      url.domain.substring(0, 38).padEnd(40) +
+      String(url.count_404s).padEnd(12) +
+      url.last_seen.toISOString().substring(0, 19)
     );
   });
   console.log('');

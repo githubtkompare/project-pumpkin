@@ -1,24 +1,24 @@
 #!/bin/bash
 
-# Script to test all domains from domains.txt in parallel using Playwright workers
-# Usage: ./test-domains-parallel.sh [workers]
+# Script to test all URLs from urls.txt in parallel using Playwright workers
+# Usage: ./test-urls-parallel.sh [workers]
 
-DOMAINS_FILE="tests/domains.txt"
+URLS_FILE="tests/urls.txt"
 WORKERS=${1:-4}  # Default to 4 workers if not specified
 
-# Check if domains file exists
-if [ ! -f "$DOMAINS_FILE" ]; then
-    echo "Error: $DOMAINS_FILE not found"
+# Check if URLs file exists
+if [ ! -f "$URLS_FILE" ]; then
+    echo "Error: $URLS_FILE not found"
     exit 1
 fi
 
-# Count total domains (use grep -c to count non-empty lines, not newlines)
-TOTAL=$(grep -c . "$DOMAINS_FILE")
+# Count total URLs (use grep -c to count non-empty lines, not newlines)
+TOTAL=$(grep -c . "$URLS_FILE")
 
 echo "========================================================================"
-echo "Parallel Domain Testing"
+echo "Parallel URL Testing"
 echo "========================================================================"
-echo "Total domains:  $TOTAL"
+echo "Total URLs:     $TOTAL"
 echo "Parallel workers: $WORKERS"
 echo "Expected time:  ~2-3 minutes (vs ~9-10 minutes sequential)"
 echo "========================================================================"
@@ -43,7 +43,7 @@ else
     echo ""
     # Create test run in database and get TEST_RUN_ID
     echo "Creating test run record in database..."
-    TEST_RUN_RESULT=$(node src/database/create-test-run.js "$TOTAL" "$WORKERS" "Parallel test run from test-domains-parallel.sh")
+    TEST_RUN_RESULT=$(node src/database/create-test-run.js "$TOTAL" "$WORKERS" "Parallel test run from test-urls-parallel.sh")
 
     export TEST_RUN_ID="$TEST_RUN_RESULT"
 

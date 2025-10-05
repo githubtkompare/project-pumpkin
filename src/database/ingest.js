@@ -4,30 +4,30 @@ import { promises as fs } from 'fs';
 
 /**
  * Data ingestion module for storing Playwright test results in PostgreSQL
- * Handles test runs, domain tests, and associated metrics
+ * Handles test runs, URL tests, and associated metrics
  */
 
 /**
  * Create a new test run record
- * @param {number} totalDomains - Total number of domains to test
+ * @param {number} totalUrls - Total number of URLs to test
  * @param {number} parallelWorkers - Number of parallel workers
  * @param {string} notes - Optional notes about this test run
  * @returns {Promise<{id: number, uuid: string}|null>} Test run ID and UUID or null on failure
  */
-export async function createTestRun(totalDomains, parallelWorkers = 4, notes = null) {
+export async function createTestRun(totalUrls, parallelWorkers = 4, notes = null) {
   if (!isDatabaseConnected()) {
     console.warn('Database not connected. Test run not recorded.');
     return null;
   }
 
   const sql = `
-    INSERT INTO test_runs (total_domains, parallel_workers, status, notes)
+    INSERT INTO test_runs (total_urls, parallel_workers, status, notes)
     VALUES ($1, $2, $3, $4)
     RETURNING id, run_uuid
   `;
 
   try {
-    const result = await query(sql, [totalDomains, parallelWorkers, 'RUNNING', notes]);
+    const result = await query(sql, [totalUrls, parallelWorkers, 'RUNNING', notes]);
     if (result && result.rows.length > 0) {
       const { id, run_uuid } = result.rows[0];
       console.error(`✓ Test run created: ID=${id}, UUID=${run_uuid}`);
@@ -69,17 +69,17 @@ export async function updateTestRun(testRunId, status, durationMs = null) {
 }
 
 /**
- * Insert a domain test result into the database
+ * Insert a URL test result into the database
  * @param {number} testRunId - Test run ID (can be null if running standalone)
  * @param {object} testMetadata - Test metadata from runWebsiteTest
  * @param {object} performanceMetrics - Performance metrics from collectPerformanceMetrics
  * @param {object} httpResponseCodes - HTTP response code counts
  * @param {boolean} storeFiles - Whether to store binary files in database (default: false)
- * @returns {Promise<number|null>} Domain test ID or null on failure
+ * @returns {Promise<number|null>} URL test ID or null on failure
  */
-export async function insertDomainTest(testRunId, testMetadata, performanceMetrics, httpResponseCodes = {}, storeFiles = false) {
+export async function insertUrlTest(testRunId, testMetadata, performanceMetrics, httpResponseCodes = {}, storeFiles = false) {
   if (!isDatabaseConnected()) {
-    console.warn('Database not connected. Domain test result not stored.');
+    console.warn('Database not connected. URL test result not stored.');
     return null;
   }
 
@@ -103,7 +103,7 @@ export async function insertDomainTest(testRunId, testMetadata, performanceMetri
   }
 
   const sql = `
-    INSERT INTO domain_tests (
+    INSERT INTO url_tests (
       test_run_id,
       test_timestamp,
       url,
@@ -179,7 +179,7 @@ export async function insertDomainTest(testRunId, testMetadata, performanceMetri
     const result = await query(sql, params);
     if (result && result.rows.length > 0) {
       const { id, test_uuid } = result.rows[0];
-      console.error(`✓ Domain test stored: ID=${id}, UUID=${test_uuid}, URL=${testMetadata.url}`);
+      console.error(`✓ URL test stored: ID=${id}, UUID=${test_uuid}, URL=${testMetadata.url}`);
 
       // Also insert normalized HTTP response codes and resource types
       await insertHttpResponses(id, httpResponseCodes);
@@ -189,7 +189,7 @@ export async function insertDomainTest(testRunId, testMetadata, performanceMetri
     }
     return null;
   } catch (error) {
-    console.error('Failed to insert domain test:', error.message);
+    console.error('Failed to insert URL test:', error.message);
     console.error('URL:', testMetadata.url);
     return null;
   }
@@ -197,21 +197,21 @@ export async function insertDomainTest(testRunId, testMetadata, performanceMetri
 
 /**
  * Insert HTTP response codes into normalized table
- * @param {number} domainTestId - Domain test ID
+ * @param {number} urlTestId - URL test ID
  * @param {object} httpResponseCodes - HTTP response code counts
  * @returns {Promise<boolean>}
  */
-async function insertHttpResponses(domainTestId, httpResponseCodes) {
-  if (!isDatabaseConnected() || !domainTestId || Object.keys(httpResponseCodes).length === 0) {
+async function insertHttpResponses(urlTestId, httpResponseCodes) {
+  if (!isDatabaseConnected() || !urlTestId || Object.keys(httpResponseCodes).length === 0) {
     return false;
   }
 
   const values = Object.entries(httpResponseCodes).map(([code, count]) =>
-    `(${domainTestId}, ${parseInt(code)}, ${count})`
+    `(${urlTestId}, ${parseInt(code)}, ${count})`
   ).join(', ');
 
   const sql = `
-    INSERT INTO http_responses (domain_test_id, status_code, response_count)
+    INSERT INTO http_responses (url_test_id, status_code, response_count)
     VALUES ${values}
   `;
 
@@ -226,21 +226,21 @@ async function insertHttpResponses(domainTestId, httpResponseCodes) {
 
 /**
  * Insert resource types into normalized table
- * @param {number} domainTestId - Domain test ID
+ * @param {number} urlTestId - URL test ID
  * @param {object} resourceTypes - Resource type counts
  * @returns {Promise<boolean>}
  */
-async function insertResourceTypes(domainTestId, resourceTypes) {
-  if (!isDatabaseConnected() || !domainTestId || Object.keys(resourceTypes).length === 0) {
+async function insertResourceTypes(urlTestId, resourceTypes) {
+  if (!isDatabaseConnected() || !urlTestId || Object.keys(resourceTypes).length === 0) {
     return false;
   }
 
   const values = Object.entries(resourceTypes).map(([type, count]) =>
-    `(${domainTestId}, '${type}', ${count})`
+    `(${urlTestId}, '${type}', ${count})`
   ).join(', ');
 
   const sql = `
-    INSERT INTO resource_types (domain_test_id, resource_type, resource_count)
+    INSERT INTO resource_types (url_test_id, resource_type, resource_count)
     VALUES ${values}
   `;
 
@@ -264,13 +264,13 @@ export function getTestRunIdFromEnv() {
 }
 
 /**
- * Bulk insert multiple domain tests within a transaction
+ * Bulk insert multiple URL tests within a transaction
  * Useful for importing historical data
  * @param {number} testRunId - Test run ID
- * @param {Array} domainTests - Array of domain test objects
+ * @param {Array} urlTests - Array of URL test objects
  * @returns {Promise<number>} Number of tests inserted
  */
-export async function bulkInsertDomainTests(testRunId, domainTests) {
+export async function bulkInsertUrlTests(testRunId, urlTests) {
   if (!isDatabaseConnected()) {
     console.warn('Database not connected. Bulk insert skipped.');
     return 0;
@@ -280,14 +280,14 @@ export async function bulkInsertDomainTests(testRunId, domainTests) {
 
   try {
     await transaction(async (client) => {
-      for (const test of domainTests) {
+      for (const test of urlTests) {
         const { testMetadata, performanceMetrics, httpResponseCodes } = test;
-        const id = await insertDomainTest(testRunId, testMetadata, performanceMetrics, httpResponseCodes, false);
+        const id = await insertUrlTest(testRunId, testMetadata, performanceMetrics, httpResponseCodes, false);
         if (id) inserted++;
       }
     });
 
-    console.error(`✓ Bulk insert complete: ${inserted}/${domainTests.length} tests inserted`);
+    console.error(`✓ Bulk insert complete: ${inserted}/${urlTests.length} tests inserted`);
     return inserted;
   } catch (error) {
     console.error('Bulk insert failed:', error.message);

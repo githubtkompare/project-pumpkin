@@ -3,7 +3,7 @@
 
 /**
  * Helper script to create a test run in the database
- * Usage: node src/database/create-test-run.js <totalDomains> <workers> [notes]
+ * Usage: node src/database/create-test-run.js <totalUrls> <workers> [notes]
  * Outputs: test_run_id or 0 on failure
  */
 
@@ -11,18 +11,18 @@ import { initializePool, closePool } from './client.js';
 import { createTestRun } from './ingest.js';
 
 async function main() {
-  const totalDomains = parseInt(process.argv[2]) || 0;
+  const totalUrls = parseInt(process.argv[2]) || 0;
   const workers = parseInt(process.argv[3]) || 4;
-  const notes = process.argv[4] || 'Parallel test run from test-domains-parallel.sh';
+  const notes = process.argv[4] || 'Parallel test run from test-urls-parallel.sh';
 
-  if (totalDomains === 0) {
-    console.error('Error: totalDomains is required', { stdio: 'inherit' });
+  if (totalUrls === 0) {
+    console.error('Error: totalUrls is required', { stdio: 'inherit' });
     process.exit(1);
   }
 
   try {
     await initializePool();
-    const result = await createTestRun(totalDomains, workers, notes);
+    const result = await createTestRun(totalUrls, workers, notes);
 
     if (result) {
       // Output only the ID to stdout for the shell script to capture

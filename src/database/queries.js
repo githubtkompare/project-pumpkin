@@ -41,17 +41,17 @@ export async function getAllTestRuns(limit = 10) {
       tr.id,
       tr.run_uuid,
       tr.run_timestamp,
-      tr.total_domains,
+      tr.total_urls,
       tr.parallel_workers,
       tr.duration_ms,
       tr.passed_count,
       tr.failed_count,
       tr.status,
-      COUNT(dt.id) as tests_completed,
-      ROUND(AVG(dt.total_page_load_ms)::numeric, 2) as avg_page_load_ms,
-      ROUND(AVG(dt.time_to_first_byte_ms)::numeric, 2) as avg_ttfb_ms
+      COUNT(ut.id) as tests_completed,
+      ROUND(AVG(ut.total_page_load_ms)::numeric, 2) as avg_page_load_ms,
+      ROUND(AVG(ut.time_to_first_byte_ms)::numeric, 2) as avg_ttfb_ms
     FROM test_runs tr
-    LEFT JOIN domain_tests dt ON dt.test_run_id = tr.id
+    LEFT JOIN url_tests ut ON ut.test_run_id = tr.id
     GROUP BY tr.id
     ORDER BY tr.run_timestamp DESC
     LIMIT $1
@@ -67,11 +67,11 @@ export async function getAllTestRuns(limit = 10) {
 }
 
 /**
- * Get all domain tests for a specific test run
+ * Get all URL tests for a specific test run
  * @param {number} testRunId - Test run ID
  * @returns {Promise<Array>}
  */
-export async function getDomainTestsByRun(testRunId) {
+export async function getUrlTestsByRun(testRunId) {
   if (!isDatabaseConnected()) {
     return [];
   }
@@ -88,7 +88,7 @@ export async function getDomainTestsByRun(testRunId) {
       time_to_first_byte_ms,
       total_resources,
       http_response_codes
-    FROM domain_tests
+    FROM url_tests
     WHERE test_run_id = $1
     ORDER BY test_timestamp ASC
   `;
@@ -103,30 +103,30 @@ export async function getDomainTestsByRun(testRunId) {
 }
 
 /**
- * Get a single domain test by ID with all details
- * @param {number} testId - Domain test ID
+ * Get a single URL test by ID with all details
+ * @param {number} testId - URL test ID
  * @returns {Promise<object|null>}
  */
-export async function getDomainTestById(testId) {
+export async function getUrlTestById(testId) {
   if (!isDatabaseConnected()) {
     return null;
   }
 
   const sql = `
     SELECT
-      dt.*,
+      ut.*,
       tr.run_timestamp,
       tr.id as test_run_id
-    FROM domain_tests dt
-    JOIN test_runs tr ON tr.id = dt.test_run_id
-    WHERE dt.id = $1
+    FROM url_tests ut
+    JOIN test_runs tr ON tr.id = ut.test_run_id
+    WHERE ut.id = $1
   `;
 
   try {
     const result = await query(sql, [testId]);
     return result?.rows[0] || null;
   } catch (error) {
-    console.error('Failed to get domain test:', error.message);
+    console.error('Failed to get URL test:', error.message);
     return null;
   }
 }
@@ -180,11 +180,11 @@ export async function getTestsWithErrors(limit = 50) {
 }
 
 /**
- * Get domains with most 404 errors
- * @param {number} limit - Number of domains to return (default: 10)
+ * Get URLs with most 404 errors
+ * @param {number} limit - Number of URLs to return (default: 10)
  * @returns {Promise<Array>}
  */
-export async function getDomainsWithMost404s(limit = 10) {
+export async function getUrlsWithMost404s(limit = 10) {
   if (!isDatabaseConnected()) {
     return [];
   }
@@ -196,7 +196,7 @@ export async function getDomainsWithMost404s(limit = 10) {
       COUNT(*) as tests_with_404s,
       (http_response_codes->>'404')::int as count_404s,
       MAX(test_timestamp) as last_seen
-    FROM domain_tests
+    FROM url_tests
     WHERE http_response_codes ? '404'
     GROUP BY domain, url, http_response_codes
     ORDER BY (http_response_codes->>'404')::int DESC
@@ -207,33 +207,33 @@ export async function getDomainsWithMost404s(limit = 10) {
     const result = await query(sql, [limit]);
     return result?.rows || [];
   } catch (error) {
-    console.error('Failed to get domains with 404s:', error.message);
+    console.error('Failed to get URLs with 404s:', error.message);
     return [];
   }
 }
 
 /**
- * Get slowest loading domains from latest test run
- * @param {number} limit - Number of domains to return (default: 10)
+ * Get slowest loading URLs from latest test run
+ * @param {number} limit - Number of URLs to return (default: 10)
  * @returns {Promise<Array>}
  */
-export async function getSlowestDomains(limit = 10) {
+export async function getSlowestUrls(limit = 10) {
   if (!isDatabaseConnected()) {
     return [];
   }
 
   const sql = `
     SELECT
-      dt.domain,
-      dt.url,
-      dt.total_page_load_ms,
-      dt.time_to_first_byte_ms,
-      dt.total_resources,
-      dt.test_timestamp
-    FROM domain_tests dt
-    JOIN test_runs tr ON tr.id = dt.test_run_id
+      ut.domain,
+      ut.url,
+      ut.total_page_load_ms,
+      ut.time_to_first_byte_ms,
+      ut.total_resources,
+      ut.test_timestamp
+    FROM url_tests ut
+    JOIN test_runs tr ON tr.id = ut.test_run_id
     WHERE tr.id = (SELECT id FROM test_runs ORDER BY run_timestamp DESC LIMIT 1)
-    ORDER BY dt.total_page_load_ms DESC
+    ORDER BY ut.total_page_load_ms DESC
     LIMIT $1
   `;
 
@@ -241,33 +241,33 @@ export async function getSlowestDomains(limit = 10) {
     const result = await query(sql, [limit]);
     return result?.rows || [];
   } catch (error) {
-    console.error('Failed to get slowest domains:', error.message);
+    console.error('Failed to get slowest URLs:', error.message);
     return [];
   }
 }
 
 /**
- * Get fastest loading domains from latest test run
- * @param {number} limit - Number of domains to return (default: 10)
+ * Get fastest loading URLs from latest test run
+ * @param {number} limit - Number of URLs to return (default: 10)
  * @returns {Promise<Array>}
  */
-export async function getFastestDomains(limit = 10) {
+export async function getFastestUrls(limit = 10) {
   if (!isDatabaseConnected()) {
     return [];
   }
 
   const sql = `
     SELECT
-      dt.domain,
-      dt.url,
-      dt.total_page_load_ms,
-      dt.time_to_first_byte_ms,
-      dt.total_resources,
-      dt.test_timestamp
-    FROM domain_tests dt
-    JOIN test_runs tr ON tr.id = dt.test_run_id
+      ut.domain,
+      ut.url,
+      ut.total_page_load_ms,
+      ut.time_to_first_byte_ms,
+      ut.total_resources,
+      ut.test_timestamp
+    FROM url_tests ut
+    JOIN test_runs tr ON tr.id = ut.test_run_id
     WHERE tr.id = (SELECT id FROM test_runs ORDER BY run_timestamp DESC LIMIT 1)
-    ORDER BY dt.total_page_load_ms ASC
+    ORDER BY ut.total_page_load_ms ASC
     LIMIT $1
   `;
 
@@ -275,7 +275,7 @@ export async function getFastestDomains(limit = 10) {
     const result = await query(sql, [limit]);
     return result?.rows || [];
   } catch (error) {
-    console.error('Failed to get fastest domains:', error.message);
+    console.error('Failed to get fastest URLs:', error.message);
     return [];
   }
 }
@@ -293,18 +293,18 @@ export async function compareTestRuns(runId1, runId2) {
 
   const sql = `
     SELECT
-      dt1.domain,
-      dt1.url,
-      dt1.total_page_load_ms as new_load_time,
-      dt2.total_page_load_ms as old_load_time,
-      (dt1.total_page_load_ms - dt2.total_page_load_ms) as load_time_diff,
-      ROUND(((dt1.total_page_load_ms - dt2.total_page_load_ms) / dt2.total_page_load_ms * 100)::numeric, 2) as percent_change,
-      dt1.time_to_first_byte_ms as new_ttfb,
-      dt2.time_to_first_byte_ms as old_ttfb,
-      (dt1.time_to_first_byte_ms - dt2.time_to_first_byte_ms) as ttfb_diff
-    FROM domain_tests dt1
-    JOIN domain_tests dt2 ON dt1.domain = dt2.domain
-    WHERE dt1.test_run_id = $1 AND dt2.test_run_id = $2
+      ut1.domain,
+      ut1.url,
+      ut1.total_page_load_ms as new_load_time,
+      ut2.total_page_load_ms as old_load_time,
+      (ut1.total_page_load_ms - ut2.total_page_load_ms) as load_time_diff,
+      ROUND(((ut1.total_page_load_ms - ut2.total_page_load_ms) / ut2.total_page_load_ms * 100)::numeric, 2) as percent_change,
+      ut1.time_to_first_byte_ms as new_ttfb,
+      ut2.time_to_first_byte_ms as old_ttfb,
+      (ut1.time_to_first_byte_ms - ut2.time_to_first_byte_ms) as ttfb_diff
+    FROM url_tests ut1
+    JOIN url_tests ut2 ON ut1.domain = ut2.domain
+    WHERE ut1.test_run_id = $1 AND ut2.test_run_id = $2
     ORDER BY load_time_diff DESC
   `;
 
@@ -329,19 +329,19 @@ export async function getLatestRunAverages() {
   const sql = `
     SELECT
       tr.run_timestamp,
-      tr.total_domains,
-      COUNT(dt.id) as tests_completed,
-      ROUND(AVG(dt.total_page_load_ms)::numeric, 2) as avg_load_time_ms,
-      ROUND(AVG(dt.time_to_first_byte_ms)::numeric, 2) as avg_ttfb_ms,
-      ROUND(AVG(dt.dns_lookup_ms)::numeric, 2) as avg_dns_ms,
-      ROUND(AVG(dt.tcp_connection_ms)::numeric, 2) as avg_tcp_ms,
-      ROUND(AVG(dt.tls_negotiation_ms)::numeric, 2) as avg_tls_ms,
-      ROUND(AVG(dt.total_resources)::numeric, 2) as avg_resources,
-      ROUND(AVG(dt.total_transfer_size_bytes)::numeric, 0) as avg_transfer_bytes
+      tr.total_urls,
+      COUNT(ut.id) as tests_completed,
+      ROUND(AVG(ut.total_page_load_ms)::numeric, 2) as avg_load_time_ms,
+      ROUND(AVG(ut.time_to_first_byte_ms)::numeric, 2) as avg_ttfb_ms,
+      ROUND(AVG(ut.dns_lookup_ms)::numeric, 2) as avg_dns_ms,
+      ROUND(AVG(ut.tcp_connection_ms)::numeric, 2) as avg_tcp_ms,
+      ROUND(AVG(ut.tls_negotiation_ms)::numeric, 2) as avg_tls_ms,
+      ROUND(AVG(ut.total_resources)::numeric, 2) as avg_resources,
+      ROUND(AVG(ut.total_transfer_size_bytes)::numeric, 0) as avg_transfer_bytes
     FROM test_runs tr
-    JOIN domain_tests dt ON dt.test_run_id = tr.id
+    JOIN url_tests ut ON ut.test_run_id = tr.id
     WHERE tr.id = (SELECT id FROM test_runs ORDER BY run_timestamp DESC LIMIT 1)
-    GROUP BY tr.id, tr.run_timestamp, tr.total_domains
+    GROUP BY tr.id, tr.run_timestamp, tr.total_urls
   `;
 
   try {
@@ -367,22 +367,22 @@ export async function getTestsByStatusCode(testRunId = null) {
     ? `
       SELECT
         hr.status_code,
-        COUNT(DISTINCT hr.domain_test_id) as test_count,
+        COUNT(DISTINCT hr.url_test_id) as test_count,
         SUM(hr.response_count) as total_responses
       FROM http_responses hr
-      JOIN domain_tests dt ON dt.id = hr.domain_test_id
-      WHERE dt.test_run_id = $1
+      JOIN url_tests ut ON ut.id = hr.url_test_id
+      WHERE ut.test_run_id = $1
       GROUP BY hr.status_code
       ORDER BY hr.status_code ASC
     `
     : `
       SELECT
         hr.status_code,
-        COUNT(DISTINCT hr.domain_test_id) as test_count,
+        COUNT(DISTINCT hr.url_test_id) as test_count,
         SUM(hr.response_count) as total_responses
       FROM http_responses hr
-      JOIN domain_tests dt ON dt.id = hr.domain_test_id
-      JOIN test_runs tr ON tr.id = dt.test_run_id
+      JOIN url_tests ut ON ut.id = hr.url_test_id
+      JOIN test_runs tr ON tr.id = ut.test_run_id
       WHERE tr.id = (SELECT id FROM test_runs ORDER BY run_timestamp DESC LIMIT 1)
       GROUP BY hr.status_code
       ORDER BY hr.status_code ASC
@@ -398,30 +398,30 @@ export async function getTestsByStatusCode(testRunId = null) {
 }
 
 /**
- * Search for domain tests by URL pattern
+ * Search for URL tests by URL pattern
  * @param {string} pattern - SQL LIKE pattern (e.g., '%uchicago%')
  * @param {number} limit - Maximum results (default: 20)
  * @returns {Promise<Array>}
  */
-export async function searchDomainTests(pattern, limit = 20) {
+export async function searchUrlTests(pattern, limit = 20) {
   if (!isDatabaseConnected()) {
     return [];
   }
 
   const sql = `
     SELECT
-      dt.id,
-      dt.test_timestamp,
-      dt.url,
-      dt.domain,
-      dt.page_title,
-      dt.status,
-      dt.total_page_load_ms,
+      ut.id,
+      ut.test_timestamp,
+      ut.url,
+      ut.domain,
+      ut.page_title,
+      ut.status,
+      ut.total_page_load_ms,
       tr.run_timestamp
-    FROM domain_tests dt
-    JOIN test_runs tr ON tr.id = dt.test_run_id
-    WHERE dt.url ILIKE $1 OR dt.domain ILIKE $1
-    ORDER BY dt.test_timestamp DESC
+    FROM url_tests ut
+    JOIN test_runs tr ON tr.id = ut.test_run_id
+    WHERE ut.url ILIKE $1 OR ut.domain ILIKE $1
+    ORDER BY ut.test_timestamp DESC
     LIMIT $2
   `;
 
@@ -429,7 +429,7 @@ export async function searchDomainTests(pattern, limit = 20) {
     const result = await query(sql, [pattern, limit]);
     return result?.rows || [];
   } catch (error) {
-    console.error('Failed to search domain tests:', error.message);
+    console.error('Failed to search URL tests:', error.message);
     return [];
   }
 }
@@ -446,33 +446,33 @@ export async function getFailedRequests(testRunId = null, limit = 50) {
     return [];
   }
 
-  // Get domain tests with error responses
+  // Get URL tests with error responses
   const sql = testRunId
     ? `
       SELECT
-        dt.id,
-        dt.url as test_url,
-        dt.domain as test_domain,
-        dt.har_path,
-        dt.http_response_codes
-      FROM domain_tests dt
-      WHERE dt.test_run_id = $1
-        AND dt.http_response_codes::text ~ '"[4-5][0-9]{2}"'
-      ORDER BY dt.test_timestamp DESC
+        ut.id,
+        ut.url as test_url,
+        ut.domain as test_domain,
+        ut.har_path,
+        ut.http_response_codes
+      FROM url_tests ut
+      WHERE ut.test_run_id = $1
+        AND ut.http_response_codes::text ~ '"[4-5][0-9]{2}"'
+      ORDER BY ut.test_timestamp DESC
       LIMIT $2
     `
     : `
       SELECT
-        dt.id,
-        dt.url as test_url,
-        dt.domain as test_domain,
-        dt.har_path,
-        dt.http_response_codes
-      FROM domain_tests dt
-      JOIN test_runs tr ON tr.id = dt.test_run_id
+        ut.id,
+        ut.url as test_url,
+        ut.domain as test_domain,
+        ut.har_path,
+        ut.http_response_codes
+      FROM url_tests ut
+      JOIN test_runs tr ON tr.id = ut.test_run_id
       WHERE tr.id = (SELECT id FROM test_runs ORDER BY run_timestamp DESC LIMIT 1)
-        AND dt.http_response_codes::text ~ '"[4-5][0-9]{2}"'
-      ORDER BY dt.test_timestamp DESC
+        AND ut.http_response_codes::text ~ '"[4-5][0-9]{2}"'
+      ORDER BY ut.test_timestamp DESC
       LIMIT $1
     `;
 
@@ -543,8 +543,8 @@ export async function getFailedRequests(testRunId = null, limit = 50) {
 }
 
 /**
- * Get failed HTTP requests for a specific domain test
- * @param {number} testId - Domain test ID
+ * Get failed HTTP requests for a specific URL test
+ * @param {number} testId - URL test ID
  * @returns {Promise<Array>} Array of {failedRequestUrl, statusCode, statusCategory}
  */
 export async function getFailedRequestsByTestId(testId) {
@@ -554,14 +554,14 @@ export async function getFailedRequestsByTestId(testId) {
 
   const sql = `
     SELECT
-      dt.id,
-      dt.url as test_url,
-      dt.domain as test_domain,
-      dt.har_path,
-      dt.http_response_codes
-    FROM domain_tests dt
-    WHERE dt.id = $1
-      AND dt.http_response_codes::text ~ '"[4-5][0-9]{2}"'
+      ut.id,
+      ut.url as test_url,
+      ut.domain as test_domain,
+      ut.har_path,
+      ut.http_response_codes
+    FROM url_tests ut
+    WHERE ut.id = $1
+      AND ut.http_response_codes::text ~ '"[4-5][0-9]{2}"'
   `;
 
   try {
@@ -667,17 +667,17 @@ export async function getTestRunsByDate(date) {
       tr.id,
       tr.run_uuid,
       tr.run_timestamp,
-      tr.total_domains,
+      tr.total_urls,
       tr.parallel_workers,
       tr.duration_ms,
       tr.passed_count,
       tr.failed_count,
       tr.status,
-      COUNT(dt.id) as tests_completed,
-      ROUND(AVG(dt.total_page_load_ms)::numeric, 2) as avg_page_load_ms,
-      ROUND(AVG(dt.time_to_first_byte_ms)::numeric, 2) as avg_ttfb_ms
+      COUNT(ut.id) as tests_completed,
+      ROUND(AVG(ut.total_page_load_ms)::numeric, 2) as avg_page_load_ms,
+      ROUND(AVG(ut.time_to_first_byte_ms)::numeric, 2) as avg_ttfb_ms
     FROM test_runs tr
-    LEFT JOIN domain_tests dt ON dt.test_run_id = tr.id
+    LEFT JOIN url_tests ut ON ut.test_run_id = tr.id
     WHERE DATE(tr.run_timestamp) = $1
     GROUP BY tr.id
     ORDER BY tr.run_timestamp DESC

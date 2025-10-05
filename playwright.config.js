@@ -53,7 +53,7 @@ export default defineConfig({
     {
       name: 'firefox-parallel',
       use: { ...devices['Desktop Firefox'] },
-      testMatch: /batch-domains\.spec\.js/,
+      testMatch: /batch-urls\.spec\.js/,
     },
 
     {

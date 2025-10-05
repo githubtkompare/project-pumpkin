@@ -2,7 +2,7 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import { initializePool, isDatabaseConnected } from '../src/database/client.js';
-import { insertDomainTest, getTestRunIdFromEnv } from '../src/database/ingest.js';
+import { insertUrlTest, getTestRunIdFromEnv } from '../src/database/ingest.js';
 
 /**
  * Auto-scroll function to trigger lazy-loaded images and content
@@ -251,7 +251,7 @@ export async function runWebsiteTest(browser, url) {
       const testRunId = getTestRunIdFromEnv();
       console.log('Storing test results in database...');
 
-      const domainTestId = await insertDomainTest(
+      const urlTestId = await insertUrlTest(
         testRunId,
         testMetadata,
         performanceMetrics,
@@ -259,8 +259,8 @@ export async function runWebsiteTest(browser, url) {
         false // Don't store binary files in DB by default
       );
 
-      if (domainTestId) {
-        console.log(`✓ Test results stored in database (ID: ${domainTestId})`);
+      if (urlTestId) {
+        console.log(`✓ Test results stored in database (ID: ${urlTestId})`);
       }
     } else {
       console.log('⚠ Database not available - results saved to filesystem only');
