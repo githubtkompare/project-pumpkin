@@ -37,6 +37,33 @@ export function getLocalTimezoneAbbr() {
 }
 
 /**
+ * Get the user's IANA timezone name (e.g., 'America/Chicago', 'America/New_York')
+ * @returns {string} IANA timezone name
+ */
+export function getIANATimezone() {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone;
+  } catch (error) {
+    console.error('Failed to get IANA timezone:', error);
+    return 'UTC'; // Fallback to UTC
+  }
+}
+
+/**
+ * Get the timezone to send to the API (UTC or IANA timezone)
+ * @param {string} preference - 'UTC' or 'Local' (optional, uses stored preference if not provided)
+ * @returns {string} Timezone string for API ('UTC' or IANA timezone like 'America/Chicago')
+ */
+export function getTimezoneForAPI(preference = null) {
+  const tz = preference || getTimezonePreference();
+  if (tz === 'UTC') {
+    return 'UTC';
+  } else {
+    return getIANATimezone();
+  }
+}
+
+/**
  * Format a UTC ISO timestamp string for display
  * @param {string} isoString - ISO 8601 timestamp (e.g., "2025-10-05T23:01:00.206Z")
  * @param {string} timezone - 'UTC' or 'Local' (optional, uses preference if not provided)

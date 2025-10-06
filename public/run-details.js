@@ -164,7 +164,7 @@ function displayUrlTests(tests) {
 
   $('#domain-tests-table').DataTable({
     pageLength: 20,
-    order: [[3, 'desc']], // Sort by Load Time (descending) by default
+    order: [[1, 'asc']], // Sort by URL (ascending, A to Z) by default
     columnDefs: [
       { orderable: false, targets: 8 } // Disable sorting on Actions column
     ],

@@ -766,28 +766,37 @@ export async function getTestsByUrl(domain, limit = 100) {
  * Get daily average load times for a specific URL (last N days)
  * @param {string} domain - Domain name to get averages for
  * @param {number} days - Number of days to include (default: 15)
+ * @param {string} timezone - Timezone for date aggregation (default: 'UTC', accepts IANA names like 'America/Chicago')
  * @returns {Promise<Array>} Array of {test_date, avg_load_time_ms, test_count}
  */
-export async function getDailyAverageLoadTime(domain, days = 15) {
+export async function getDailyAverageLoadTime(domain, days = 15, timezone = 'UTC') {
   if (!isDatabaseConnected()) {
     return [];
   }
 
+  // Validate timezone parameter to prevent SQL injection
+  // Accept 'UTC' or IANA timezone names (e.g., 'America/Chicago')
+  const validTimezonePattern = /^[A-Za-z_]+\/[A-Za-z_]+$|^UTC$/;
+  if (!validTimezonePattern.test(timezone)) {
+    console.error('Invalid timezone parameter:', timezone);
+    timezone = 'UTC'; // Fallback to UTC if invalid
+  }
+
   const sql = `
     SELECT
-      DATE(ut.test_timestamp) as test_date,
+      DATE(ut.test_timestamp AT TIME ZONE $2) as test_date,
       ROUND(AVG(ut.total_page_load_ms)::numeric, 2) as avg_load_time_ms,
       COUNT(*) as test_count
     FROM url_tests ut
     WHERE ut.domain = $1
       AND ut.test_timestamp >= NOW() - INTERVAL '${days} days'
       AND ut.total_page_load_ms IS NOT NULL
-    GROUP BY DATE(ut.test_timestamp)
+    GROUP BY DATE(ut.test_timestamp AT TIME ZONE $2)
     ORDER BY test_date ASC
   `;
 
   try {
-    const result = await query(sql, [domain]);
+    const result = await query(sql, [domain, timezone]);
     return result?.rows || [];
   } catch (error) {
     console.error('Failed to get daily average load time:', error.message);

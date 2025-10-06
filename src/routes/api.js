@@ -264,13 +264,26 @@ router.get('/urls/:domain/tests', async (req, res) => {
 /**
  * GET /api/urls/:domain/daily-averages
  * Get daily average load times for a specific URL (last N days)
- * Query parameter: days (default: 15)
+ * Query parameters:
+ *   - days (default: 15)
+ *   - timezone (default: 'UTC', accepts IANA timezone names like 'America/Chicago')
  */
 router.get('/urls/:domain/daily-averages', async (req, res) => {
   try {
     const domain = decodeURIComponent(req.params.domain);
     const days = parseInt(req.query.days) || 15;
-    const averages = await getDailyAverageLoadTime(domain, days);
+    const timezone = req.query.timezone || 'UTC';
+
+    // Validate timezone parameter
+    const validTimezonePattern = /^[A-Za-z_]+\/[A-Za-z_]+$|^UTC$/;
+    if (!validTimezonePattern.test(timezone)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid timezone parameter. Use UTC or IANA timezone name (e.g., America/Chicago)'
+      });
+    }
+
+    const averages = await getDailyAverageLoadTime(domain, days, timezone);
     res.json({ success: true, data: averages });
   } catch (error) {
     console.error('API Error - /urls/:domain/daily-averages:', error);

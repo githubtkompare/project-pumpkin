@@ -5,7 +5,8 @@ import {
   getTimezonePreference,
   getDateString,
   getToday,
-  formatChartDateLabel
+  formatChartDateLabel,
+  getTimezoneForAPI
 } from './timezone-utils.js';
 
 // Utility functions
@@ -78,7 +79,8 @@ async function fetchUrlTests(url) {
 
 async function fetchDailyAverages(url) {
   try {
-    const response = await fetch(`/api/urls/${encodeURIComponent(url)}/daily-averages?days=15`);
+    const timezone = getTimezoneForAPI();
+    const response = await fetch(`/api/urls/${encodeURIComponent(url)}/daily-averages?days=15&timezone=${encodeURIComponent(timezone)}`);
     const result = await response.json();
 
     if (result.success) {
@@ -228,8 +230,12 @@ function drawDailyAverageChart(data) {
       : `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 
     // Find matching data for this date
+    // The API now returns dates already in the correct timezone as YYYY-MM-DD strings
     const existing = data.find(d => {
-      const dbDateStr = getDateString(d.test_date, timezone);
+      // Extract just the date portion (YYYY-MM-DD) from the test_date
+      const dbDateStr = typeof d.test_date === 'string'
+        ? d.test_date.split('T')[0]  // Handle ISO timestamps
+        : d.test_date;
       return dbDateStr === dateStr;
     });
 
