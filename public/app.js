@@ -284,12 +284,106 @@ function formatDate(dateStr) {
   });
 }
 
+// URL Search and Autocomplete functionality
+let urlAutocompleteTimeout = null;
+let selectedUrl = null;
+
+async function fetchUrlAutocomplete(query) {
+  if (!query || query.length < 2) {
+    hideUrlAutocomplete();
+    return;
+  }
+
+  try {
+    const response = await fetch(`/api/urls/autocomplete?q=${encodeURIComponent(query)}`);
+    const result = await response.json();
+
+    if (result.success && result.data.length > 0) {
+      displayUrlAutocomplete(result.data);
+    } else {
+      hideUrlAutocomplete();
+    }
+  } catch (error) {
+    console.error('Failed to fetch URL autocomplete:', error);
+    hideUrlAutocomplete();
+  }
+}
+
+function displayUrlAutocomplete(suggestions) {
+  const list = document.getElementById('url-autocomplete-list');
+
+  list.innerHTML = suggestions.map(item => `
+    <button type="button" class="list-group-item list-group-item-action" data-domain="${item.domain}">
+      <strong>${item.domain}</strong>
+      <br>
+      <small class="text-muted">${item.url}</small>
+    </button>
+  `).join('');
+
+  list.style.display = 'block';
+
+  // Add click handlers to autocomplete items
+  list.querySelectorAll('.list-group-item').forEach(item => {
+    item.addEventListener('click', function() {
+      const domain = this.getAttribute('data-domain');
+      selectedUrl = domain;
+      document.getElementById('url-search-input').value = domain;
+      hideUrlAutocomplete();
+    });
+  });
+}
+
+function hideUrlAutocomplete() {
+  const list = document.getElementById('url-autocomplete-list');
+  list.style.display = 'none';
+  list.innerHTML = '';
+}
+
+function setupUrlSearch() {
+  const input = document.getElementById('url-search-input');
+  const form = document.getElementById('url-search-form');
+
+  // Handle input with debouncing
+  input.addEventListener('input', function() {
+    clearTimeout(urlAutocompleteTimeout);
+    const query = this.value.trim();
+
+    if (query.length >= 2) {
+      urlAutocompleteTimeout = setTimeout(() => {
+        fetchUrlAutocomplete(query);
+      }, 300); // 300ms debounce
+    } else {
+      hideUrlAutocomplete();
+    }
+  });
+
+  // Hide autocomplete when clicking outside
+  document.addEventListener('click', function(e) {
+    if (!input.contains(e.target) && !document.getElementById('url-autocomplete-list').contains(e.target)) {
+      hideUrlAutocomplete();
+    }
+  });
+
+  // Handle form submission
+  form.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const urlValue = input.value.trim();
+
+    if (urlValue) {
+      // Use selectedUrl if available (from autocomplete), otherwise use input value
+      const searchUrl = selectedUrl || urlValue;
+      window.location.href = `/url-results.html?url=${encodeURIComponent(searchUrl)}`;
+    }
+  });
+}
+
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
   fetchLatestRun();
   fetchStats();
   fetchTestRuns();
   fetchAvailableDates();
+  setupUrlSearch();
 
   // Auto-refresh every 30 seconds
   setInterval(() => {

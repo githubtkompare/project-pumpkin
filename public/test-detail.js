@@ -91,7 +91,7 @@ function getTestIdFromUrl() {
 // API call
 async function fetchTestDetails(testId) {
   try {
-    const response = await fetch(`/api/domain-tests/${testId}`);
+    const response = await fetch(`/api/url-tests/${testId}`);
     const result = await response.json();
 
     if (result.success) {
@@ -281,7 +281,7 @@ async function displayFailedRequests(testId) {
   const container = document.getElementById('failed-requests');
 
   try {
-    const response = await fetch(`/api/domain-tests/${testId}/failed-requests`);
+    const response = await fetch(`/api/url-tests/${testId}/failed-requests`);
     const result = await response.json();
 
     if (result.success && result.data && result.data.length > 0) {

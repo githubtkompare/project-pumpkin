@@ -12,7 +12,10 @@ import {
   getFailedRequests,
   getFailedRequestsByTestId,
   getAvailableDates,
-  getTestRunsByDate
+  getTestRunsByDate,
+  getUrlAutocomplete,
+  getTestsByUrl,
+  getDailyAverageLoadTime
 } from '../database/queries.js';
 
 const router = express.Router();
@@ -217,6 +220,60 @@ router.get('/calendar/runs-by-date', async (req, res) => {
     res.json({ success: true, data: runs });
   } catch (error) {
     console.error('API Error - /calendar/runs-by-date:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/urls/autocomplete
+ * Get URL autocomplete suggestions
+ * Query parameter: q (search query)
+ */
+router.get('/urls/autocomplete', async (req, res) => {
+  try {
+    const query = req.query.q;
+    if (!query) {
+      return res.json({ success: true, data: [] });
+    }
+
+    const limit = parseInt(req.query.limit) || 10;
+    const suggestions = await getUrlAutocomplete(query, limit);
+    res.json({ success: true, data: suggestions });
+  } catch (error) {
+    console.error('API Error - /urls/autocomplete:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/urls/:domain/tests
+ * Get all test results for a specific URL/domain
+ */
+router.get('/urls/:domain/tests', async (req, res) => {
+  try {
+    const domain = decodeURIComponent(req.params.domain);
+    const limit = parseInt(req.query.limit) || 100;
+    const tests = await getTestsByUrl(domain, limit);
+    res.json({ success: true, data: tests });
+  } catch (error) {
+    console.error('API Error - /urls/:domain/tests:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/urls/:domain/daily-averages
+ * Get daily average load times for a specific URL (last N days)
+ * Query parameter: days (default: 15)
+ */
+router.get('/urls/:domain/daily-averages', async (req, res) => {
+  try {
+    const domain = decodeURIComponent(req.params.domain);
+    const days = parseInt(req.query.days) || 15;
+    const averages = await getDailyAverageLoadTime(domain, days);
+    res.json({ success: true, data: averages });
+  } catch (error) {
+    console.error('API Error - /urls/:domain/daily-averages:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

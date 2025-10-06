@@ -46,8 +46,8 @@ services:
     tty: true             # Allocate pseudo-TTY for terminal (-t flag)
     volumes:
       - ./test-history:/app/test-history  # Persist test results to host
-      - ./test-domains.sh:/app/test-domains.sh  # Mount sequential test script
-      - ./test-domains-parallel.sh:/app/test-domains-parallel.sh  # Mount parallel test script
+      - ./test-urls.sh:/app/test-urls.sh  # Mount sequential test script
+      - ./test-urls-parallel.sh:/app/test-urls-parallel.sh  # Mount parallel test script
       - ./tests:/app/tests  # Mount entire tests directory for updated test files
       - ./playwright.config.js:/app/playwright.config.js  # Mount config
       - ./src:/app/src  # Mount src directory for database modules

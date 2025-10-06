@@ -691,3 +691,106 @@ export async function getTestRunsByDate(date) {
     return [];
   }
 }
+
+/**
+ * Get URL autocomplete suggestions
+ * @param {string} searchQuery - Search query for URL/domain
+ * @param {number} limit - Maximum results (default: 10)
+ * @returns {Promise<Array>} Array of distinct domains matching the query
+ */
+export async function getUrlAutocomplete(searchQuery, limit = 10) {
+  if (!isDatabaseConnected()) {
+    return [];
+  }
+
+  const sql = `
+    SELECT DISTINCT domain, url
+    FROM url_tests
+    WHERE domain ILIKE $1 OR url ILIKE $1
+    ORDER BY domain ASC
+    LIMIT $2
+  `;
+
+  try {
+    const pattern = `%${searchQuery}%`;
+    const result = await query(sql, [pattern, limit]);
+    return result?.rows || [];
+  } catch (error) {
+    console.error('Failed to get URL autocomplete:', error.message);
+    return [];
+  }
+}
+
+/**
+ * Get all test results for a specific URL/domain
+ * @param {string} domain - Domain name to search for
+ * @param {number} limit - Maximum results (default: 100)
+ * @returns {Promise<Array>}
+ */
+export async function getTestsByUrl(domain, limit = 100) {
+  if (!isDatabaseConnected()) {
+    return [];
+  }
+
+  const sql = `
+    SELECT
+      ut.id,
+      ut.test_timestamp,
+      ut.url,
+      ut.domain,
+      ut.page_title,
+      ut.status,
+      ut.total_page_load_ms,
+      ut.time_to_first_byte_ms,
+      ut.total_resources,
+      ut.http_response_codes,
+      ut.test_run_id,
+      tr.run_timestamp
+    FROM url_tests ut
+    JOIN test_runs tr ON tr.id = ut.test_run_id
+    WHERE ut.domain = $1
+    ORDER BY ut.test_timestamp DESC
+    LIMIT $2
+  `;
+
+  try {
+    const result = await query(sql, [domain, limit]);
+    return result?.rows || [];
+  } catch (error) {
+    console.error('Failed to get tests by URL:', error.message);
+    return [];
+  }
+}
+
+/**
+ * Get daily average load times for a specific URL (last N days)
+ * @param {string} domain - Domain name to get averages for
+ * @param {number} days - Number of days to include (default: 15)
+ * @returns {Promise<Array>} Array of {test_date, avg_load_time_ms, test_count}
+ */
+export async function getDailyAverageLoadTime(domain, days = 15) {
+  if (!isDatabaseConnected()) {
+    return [];
+  }
+
+  const sql = `
+    SELECT
+      DATE(ut.test_timestamp) as test_date,
+      ROUND(AVG(ut.total_page_load_ms)::numeric, 2) as avg_load_time_ms,
+      COUNT(*) as test_count
+    FROM url_tests ut
+    WHERE ut.domain = $1
+      AND ut.test_timestamp >= NOW() - INTERVAL '${days} days'
+      AND ut.total_page_load_ms IS NOT NULL
+    GROUP BY DATE(ut.test_timestamp)
+    ORDER BY test_date ASC
+  `;
+
+  try {
+    const result = await query(sql, [domain]);
+    return result?.rows || [];
+  } catch (error) {
+    console.error('Failed to get daily average load time:', error.message);
+    return [];
+  }
+}
