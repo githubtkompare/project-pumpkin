@@ -14,7 +14,7 @@ Project Pumpkin uses PostgreSQL to store and analyze Playwright test metrics, in
 ### Tables
 
 #### `test_runs`
-Represents each execution of `test-domains-parallel.sh`
+Represents each execution of `test-urls-parallel.sh`
 
 | Column | Type | Description |
 |--------|------|-------------|
@@ -46,6 +46,7 @@ Individual URL test results within a test run
 | test_duration_ms | INTEGER | Total test duration |
 | scroll_duration_ms | INTEGER | Auto-scroll duration |
 | status | VARCHAR(20) | PASSED, FAILED, TIMEOUT, ERROR |
+| error_message | TEXT | Error message if test failed |
 | dns_lookup_ms | DECIMAL(10,2) | DNS lookup time |
 | tcp_connection_ms | DECIMAL(10,2) | TCP connection time |
 | tls_negotiation_ms | DECIMAL(10,2) | TLS handshake time |
@@ -132,8 +133,8 @@ npm run db:query latest
 # Show all recent test runs
 npm run db:query runs 10
 
-# Show domain tests for a specific run
-npm run db:query domains 123
+# Show URL tests for a specific run
+npm run db:query urls 123
 
 # Show performance trend for a domain
 npm run db:query trend www.uchicago.edu 10
@@ -143,6 +144,9 @@ npm run db:query errors
 
 # Show domains with 404 errors
 npm run db:query 404s
+
+# Show HTTP 400+ failed request details
+npm run db:query failed-requests 20
 
 # Show slowest domains
 npm run db:query slowest 10
@@ -243,7 +247,7 @@ LIMIT 10;
 ### Test Execution Flow
 
 1. **Start Test Run**
-   - `test-domains-parallel.sh` creates a `test_runs` record
+   - `test-urls-parallel.sh` creates a `test_runs` record
    - Sets status to 'RUNNING'
    - Returns `TEST_RUN_ID` environment variable
 
@@ -260,7 +264,7 @@ LIMIT 10;
      - `test_runs` counts auto-updated via trigger
 
 4. **Complete Test Run**
-   - `test-domains-parallel.sh` updates `test_runs` status to 'COMPLETED'
+   - `test-urls-parallel.sh` updates `test_runs` status to 'COMPLETED'
    - Records total duration
 
 ### Database Integration Points
@@ -273,7 +277,7 @@ LIMIT 10;
 | [src/database/cli.js](src/database/cli.js) | Command-line interface |
 | [src/reports/generate.js](src/reports/generate.js) | Report generation |
 | [tests/test-helpers.js](tests/test-helpers.js) | Test execution + DB storage |
-| [test-domains-parallel.sh](test-domains-parallel.sh) | Test run tracking |
+| [test-urls-parallel.sh](test-urls-parallel.sh) | Test run tracking |
 
 ## Maintenance
 
@@ -339,6 +343,66 @@ npm run db:cleanup               # Delete
 - After failed test runs that didn't complete database insertion
 - To clean up tests created before database integration
 - To reclaim disk space from incomplete tests
+
+## Timezone Support
+
+### Database Timezone Configuration
+
+PostgreSQL stores all timestamps in UTC using the `TIMESTAMPTZ` type. All `run_timestamp`, `test_timestamp`, and `created_at` fields use this type for consistent, timezone-aware storage.
+
+### Querying with Timezones
+
+The database supports IANA timezone identifiers for converting UTC timestamps to local time:
+
+```sql
+-- Convert UTC to specific timezone
+SELECT
+    id,
+    started_at AT TIME ZONE 'UTC' as utc_time,
+    started_at AT TIME ZONE 'America/Chicago' as cdt_time,
+    domain,
+    status
+FROM url_tests
+WHERE domain = 'www.uchicago.edu'
+ORDER BY started_at DESC
+LIMIT 10;
+```
+
+### Web Dashboard Timezone Toggle
+
+The web dashboard includes a UTC/Local timezone toggle on all reporting pages:
+- **Home page** - Test run listings
+- **Run Details** - Individual test run results
+- **URL Results** - Detailed URL test metrics
+- **Test Detail** - Single test information
+
+Users can switch between UTC and their browser's local timezone. The preference is stored in `localStorage` and persists across sessions.
+
+**Implementation files:**
+- [public/timezone-toggle.js](public/timezone-toggle.js) - Toggle UI component
+- [public/timezone-utils.js](public/timezone-utils.js) - Timezone conversion utilities
+- [src/routes/api.js](src/routes/api.js) - API timezone parameter support
+
+### API Timezone Support
+
+API endpoints accept an optional `timezone` query parameter:
+
+```bash
+# Get runs in UTC (default)
+curl http://localhost:3000/api/runs
+
+# Get runs in Chicago time
+curl http://localhost:3000/api/runs?timezone=America/Chicago
+
+# Get runs in Tokyo time
+curl http://localhost:3000/api/runs?timezone=Asia/Tokyo
+```
+
+Supported IANA timezone identifiers include:
+- `America/Chicago`, `America/New_York`, `America/Los_Angeles`
+- `Europe/London`, `Europe/Paris`, `Europe/Berlin`
+- `Asia/Tokyo`, `Asia/Shanghai`, `Asia/Dubai`
+- And any other valid IANA timezone identifier
 
 ## Performance Considerations
 
@@ -418,11 +482,18 @@ See [SECURITY.md](SECURITY.md) for detailed guidelines.
 
 ## Future Enhancements
 
+Completed features:
+- [x] Web dashboard for visualization
+- [x] Comparison reports across time ranges
+- [x] Timezone support with IANA identifiers
+- [x] Failed request details and categorization
+
 Potential improvements:
 - [ ] TimescaleDB extension for time-series optimization
-- [ ] Automated data retention policies
+- [ ] Automated data retention policies (cleanup exists, automation pending)
 - [ ] Performance alerting thresholds
 - [ ] GraphQL API for queries
-- [ ] Web dashboard for visualization
-- [ ] Export to CSV/JSON
-- [ ] Comparison reports across time ranges
+- [ ] Export to CSV/JSON formats
+- [ ] Real-time test monitoring dashboard
+- [ ] Performance regression detection
+- [ ] Custom report templates

@@ -1,4 +1,4 @@
-# Project Pumpkin 🎃
+# Project Pumpkin 🐈
 
 ## A Docker-based web performance testing platform powered by Playwright
 
@@ -1077,7 +1077,8 @@ docker-compose up -d
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the Creative Commons Zero v1.0 Universal
+(CC0 1.0). See the [LICENSE](LICENSE) file for details.
 
 ---
 
@@ -1090,6 +1091,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-Made with 🎃 by the Project Pumpkin Team
+Made with 🐈 by the Project Pumpkin Team
 
 Last updated: 2025-10-05

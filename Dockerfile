@@ -20,8 +20,8 @@ RUN npx playwright install --with-deps firefox
 COPY src ./src
 COPY tests ./tests
 COPY playwright.config.js ./
-COPY test-domains.sh ./
-COPY test-domains-parallel.sh ./
+COPY test-urls.sh ./
+COPY test-urls-parallel.sh ./
 
 # Expose app port
 EXPOSE 3000
