@@ -25,6 +25,7 @@
     "pg": "^8.13.1"
   },
   "devDependencies": {
-    "@playwright/test": "1.48.2"
+    "@playwright/test": "1.48.2",
+    "markdownlint-cli": "^0.45.0"
   }
 }

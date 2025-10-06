@@ -1,8 +1,11 @@
 # Project Pumpkin 🎃
 
-**A Docker-based web performance testing platform powered by Playwright**
+## A Docker-based web performance testing platform powered by Playwright
 
-Project Pumpkin automates website performance testing using Playwright and Firefox. It captures screenshots, records network activity, measures load times, and stores all results in a PostgreSQL database. View detailed performance reports through an interactive web dashboard.
+Project Pumpkin automates website performance testing using Playwright and
+Firefox. It captures screenshots, records network activity, measures load
+times, and stores all results in a PostgreSQL database. View detailed
+performance reports through an interactive web dashboard.
 
 ---
 
@@ -35,6 +38,7 @@ Project Pumpkin is a **self-contained web performance testing system** that:
 ✅ **Provides reports** - Interactive web dashboard with charts and comparisons
 
 **Use cases:**
+
 - Monitor website performance over time
 - Detect broken pages (404 errors, slow loads)
 - Compare performance across multiple domains
@@ -95,6 +99,7 @@ docker-compose --version
 | **Network** | Any | Stable internet connection |
 
 **Why these specs?**
+
 - Playwright runs a full Firefox browser (needs RAM)
 - Screenshots and network logs accumulate over time (needs disk space)
 - Parallel testing runs multiple tests at once (benefits from more CPU cores)
@@ -108,6 +113,7 @@ docker-compose --version
 First, decide where you want to install Project Pumpkin on your server.
 
 **Good choices:**
+
 - `/home/yourusername/projects/` (Linux/macOS)
 - `C:\Users\yourusername\Documents\` (Windows)
 
@@ -136,7 +142,8 @@ git clone https://github.com/yourusername/project-pumpkin.git
 **What this does:** Downloads all the project files to your computer.
 
 **You should see:**
-```
+
+```text
 Cloning into 'project-pumpkin'...
 remote: Enumerating objects: 150, done.
 remote: Counting objects: 100% (150/150), done.
@@ -160,6 +167,7 @@ ls -la
 ```
 
 **You should see these important files:**
+
 - `docker-compose.yml` - Defines the containers
 - `.env.example` - Template for environment variables
 - `Dockerfile` - Instructions for building the Docker image
@@ -176,7 +184,8 @@ ls -la
 
 ### Step 5: Create Your Environment File
 
-The `.env` file stores your database password and other settings. **This file should NEVER be committed to Git** because it contains secrets.
+The `.env` file stores your database password and other settings.
+**This file should NEVER be committed to Git** because it contains secrets.
 
 **Create the file:**
 
@@ -191,7 +200,10 @@ cp .env.example .env
 
 Now you need to edit the `.env` file and set a strong password for your database.
 
-**🔑 How this works:** When you start Docker (in Step 9), it will read this password from `.env` and automatically create the PostgreSQL database with your chosen password. You're setting it **before** the database exists, and Docker handles the rest!
+**🔑 How this works:** When you start Docker (in Step 9), it will read this
+password from `.env` and automatically create the PostgreSQL database with
+your chosen password. You're setting it **before** the database exists, and
+Docker handles the rest!
 
 **Open the file in a text editor:**
 
@@ -226,29 +238,34 @@ PORT=3000
 ```
 
 **Change `your_secure_password_here` to a strong password** in THREE places:
+
 1. `POSTGRES_PASSWORD=your_secure_password_here`
 2. `DATABASE_URL=postgresql://pumpkin:your_secure_password_here@postgres:5432/playwright_metrics`
 3. `DATABASE_URL_LOCAL=postgresql://pumpkin:your_secure_password_here@localhost:5432/playwright_metrics`
 
 **Example of a strong password:**
-```
+
+```env
 POSTGRES_PASSWORD=SecureP@ssw0rd!2025
 DATABASE_URL=postgresql://pumpkin:SecureP@ssw0rd!2025@postgres:5432/playwright_metrics
 DATABASE_URL_LOCAL=postgresql://pumpkin:SecureP@ssw0rd!2025@localhost:5432/playwright_metrics
 ```
 
 **Password requirements:**
+
 - At least 12 characters long
 - Mix of uppercase and lowercase letters
 - Include numbers and symbols
 - Don't use common words or your username
 
 **Save and exit:**
+
 - In nano: Press `Ctrl + X`, then `Y`, then `Enter`
 - In vim: Press `Esc`, type `:wq`, press `Enter`
 - In Notepad: Click File → Save
 
 **⚠️ IMPORTANT SECURITY NOTE:**
+
 - Keep this `.env` file private
 - Never share it via email or chat
 - Never commit it to Git (it's already in `.gitignore`)
@@ -273,7 +290,8 @@ grep "your_secure_password_here" .env
 
 ### Step 8: Build the Docker Images
 
-Before running the application for the first time, you need to build the Docker images. This downloads all dependencies and creates the containers.
+Before running the application for the first time, you need to build the
+Docker images. This downloads all dependencies and creates the containers.
 
 **Run this command:**
 
@@ -282,6 +300,7 @@ docker-compose build
 ```
 
 **What this does:**
+
 - Downloads the Playwright Docker image (~2 GB)
 - Downloads PostgreSQL Docker image (~200 MB)
 - Installs Node.js dependencies
@@ -291,7 +310,8 @@ docker-compose build
 **This will take 5-10 minutes** depending on your internet speed.
 
 **You'll see lots of output** like:
-```
+
+```text
 [+] Building 234.5s (15/15) FINISHED
  => [internal] load build definition from Dockerfile
  => => transferring dockerfile: 32B
@@ -300,7 +320,8 @@ docker-compose build
 ```
 
 **When it's done**, you'll see:
-```
+
+```text
 Successfully tagged project-pumpkin:latest
 ```
 
@@ -320,12 +341,14 @@ docker-compose up -d
 - Starts the web application on port 3000
 - Prepares the Playwright testing environment
 
-**🔐 Note:** The password you set in Step 6 is now being used to create the PostgreSQL database. On future startups, PostgreSQL will remember this password.
+**🔐 Note:** The password you set in Step 6 is now being used to create the
+PostgreSQL database. On future startups, PostgreSQL will remember this password.
 
 **The `-d` flag** means "detached mode" - runs in the background.
 
 **You should see:**
-```
+
+```text
 [+] Running 4/4
  ✔ Network project-pumpkin_playwright-network  Created
  ✔ Volume "project-pumpkin_postgres-data"      Created
@@ -342,7 +365,8 @@ docker-compose ps
 ```
 
 **You should see:**
-```
+
+```text
 NAME                     STATUS          PORTS
 project-pumpkin-db       Up 30 seconds   0.0.0.0:5432->5432/tcp
 project-pumpkin-app-1    Up 30 seconds   0.0.0.0:3000->3000/tcp
@@ -359,13 +383,15 @@ docker-compose logs app
 ```
 
 **You should see:**
-```
+
+```text
 🐈 Project Pumpkin server running on port 3000
 📊 Dashboard: http://localhost:3000
 🔌 API: http://localhost:3000/api
 ```
 
-**If you see errors** about database connection, wait 30 seconds (database may still be initializing) and run the command again.
+**If you see errors** about database connection, wait 30 seconds (database may
+still be initializing) and run the command again.
 
 ---
 
@@ -375,21 +401,24 @@ docker-compose logs app
 
 Open a web browser and go to:
 
-```
+```text
 http://localhost:3000
 ```
 
 **If you're on a remote server**, replace `localhost` with your server's IP address:
-```
+
+```text
 http://192.168.1.100:3000
 ```
 
 **You should see:**
+
 - The Project Pumpkin dashboard
 - A list of recent test runs (will be empty on first launch)
 - Navigation to view reports and search results
 
 **If the page doesn't load**, check:
+
 1. Is the app container running? (`docker-compose ps`)
 2. Is port 3000 open in your firewall?
 3. Are you using the correct IP address?
@@ -414,12 +443,14 @@ docker-compose run --rm playwright
 ```
 
 **What this does:**
+
 - Starts a new container with Playwright installed
 - Gives you a bash shell inside the container
 - Automatically connects to the database
 - The `--rm` flag removes the container when you exit
 
 **You should see:**
+
 ```bash
 root@abc123:/app#
 ```
@@ -439,6 +470,7 @@ TEST_URL=https://www.google.com npx playwright test --project=firefox
 ```
 
 **What this does:**
+
 1. Opens Firefox browser (headless mode)
 2. Navigates to the URL
 3. Scrolls down to load all content
@@ -448,7 +480,8 @@ TEST_URL=https://www.google.com npx playwright test --project=firefox
 7. Saves everything to the database
 
 **You'll see output like:**
-```
+
+```text
 Running 1 test using 1 worker
 
   ✓  1 tests/uchicago-screenshot.spec.js:3:1 › Screenshot test (5s)
@@ -457,6 +490,7 @@ Running 1 test using 1 worker
 ```
 
 **Test results are saved to:**
+
 - **Screenshot:** `test-history/2025-10-05T14-30-22-123Z__www.google.com/screenshot.png`
 - **HAR file:** `test-history/2025-10-05T14-30-22-123Z__www.google.com/network.har`
 - **Database:** Performance metrics stored in PostgreSQL
@@ -474,13 +508,15 @@ To test all URLs from the `tests/urls.txt` file (40+ domains):
 ```
 
 **What this does:**
+
 - Reads all URLs from `tests/urls.txt`
 - Runs multiple tests simultaneously
 - Creates one test run record in the database
 - Shows real-time progress
 
 **You'll see:**
-```
+
+```text
 Starting parallel test run with 4 workers...
 Test run ID: 42
 Testing 39 URLs...
@@ -511,11 +547,13 @@ exit
 ### Option 1: View in the Dashboard (Easiest)
 
 Open your web browser to:
-```
+
+```text
 http://localhost:3000
 ```
 
 **Click through the interface:**
+
 - **Home page:** Recent test runs
 - **Run Details:** Click any run to see all tested URLs
 - **URL Results:** Click any URL to see detailed metrics
@@ -530,6 +568,7 @@ npm run db:query latest
 ```
 
 **Shows:**
+
 - When the test ran
 - How many URLs were tested
 - Pass/fail counts
@@ -589,6 +628,7 @@ npm run db:report
 ```
 
 **Generates a comprehensive report** including:
+
 - Average load times
 - Resource counts
 - HTTP status codes
@@ -633,6 +673,7 @@ docker-compose down
 ```
 
 **What this does:**
+
 - Stops all running containers
 - Removes containers
 - **Keeps your data** (database volume and test-history files)
@@ -648,6 +689,7 @@ docker-compose down -v
 **The `-v` flag** removes volumes (deletes the database).
 
 **Use this only if:**
+
 - You want to start completely fresh
 - You're uninstalling the project
 - You've backed up important data
@@ -659,11 +701,13 @@ docker-compose down -v
 ### Problem: "Cannot connect to Docker daemon"
 
 **Error message:**
-```
+
+```text
 Cannot connect to the Docker daemon at unix:///var/run/docker.sock
 ```
 
 **Solution:**
+
 1. Make sure Docker Desktop is running (look for the whale icon in your system tray)
 2. Try: `sudo systemctl start docker` (Linux)
 3. Restart your computer
@@ -671,7 +715,8 @@ Cannot connect to the Docker daemon at unix:///var/run/docker.sock
 ### Problem: "Port 3000 is already in use"
 
 **Error message:**
-```
+
+```text
 Error: bind: address already in use
 ```
 
@@ -691,11 +736,13 @@ kill -9 PID
 **Option B:** Change Project Pumpkin's port
 
 Edit `.env` file:
+
 ```bash
 PORT=3001
 ```
 
 Then restart:
+
 ```bash
 docker-compose down
 docker-compose up -d
@@ -706,6 +753,7 @@ Access at: `http://localhost:3001`
 ### Problem: "Database connection failed"
 
 **Symptoms:**
+
 - Dashboard shows "database: disconnected"
 - Logs show PostgreSQL connection errors
 
@@ -714,11 +762,13 @@ Access at: `http://localhost:3001`
 1. **Wait 30 seconds** - Database takes time to initialize on first start
 
 2. **Check if database is running:**
+
    ```bash
    docker-compose ps
    ```
 
 3. **Check database logs:**
+
    ```bash
    docker-compose logs postgres
    ```
@@ -726,6 +776,7 @@ Access at: `http://localhost:3001`
 4. **Verify password in `.env` matches in all three places**
 
 5. **Restart everything:**
+
    ```bash
    docker-compose restart
    ```
@@ -739,6 +790,7 @@ sudo docker-compose up -d
 ```
 
 **Better solution:** Add your user to the docker group:
+
 ```bash
 sudo usermod -aG docker $USER
 ```
@@ -758,6 +810,7 @@ docker-compose up -d
 ### Problem: "Out of disk space"
 
 **Symptoms:**
+
 - Tests fail randomly
 - Container won't start
 
@@ -778,7 +831,8 @@ npm run db:cleanup
 ### Problem: "Cannot find module" errors
 
 **Error message:**
-```
+
+```text
 Error: Cannot find module 'express'
 ```
 
@@ -852,6 +906,7 @@ docker-compose restart
 If you're still stuck:
 
 1. **Check the logs:**
+
    ```bash
    docker-compose logs
    ```
@@ -914,10 +969,12 @@ cat backup.sql | docker exec -i project-pumpkin-db psql -U pumpkin -d playwright
 ### Production Deployment
 
 For production servers, read:
+
 - [SECURITY.md](SECURITY.md) - Secure credential management
 - [DATABASE.md](DATABASE.md) - Performance optimization and backups
 
 **Key production changes:**
+
 - Use Docker Secrets instead of `.env` files
 - Enable SSL/TLS for database connections
 - Set up automated backups
@@ -944,12 +1001,14 @@ open test-history/2025-10-05T14-30-22-123Z__www.google.com/screenshot.png
 Project Pumpkin provides a REST API at `http://localhost:3000/api`:
 
 **Endpoints:**
+
 - `GET /api/runs` - List all test runs
 - `GET /api/runs/:id` - Get specific test run details
 - `GET /api/urls/:id` - Get specific URL test details
 - `GET /api/health` - Health check
 
 **Example:**
+
 ```bash
 # Get latest test runs
 curl http://localhost:3000/api/runs?limit=10
@@ -984,7 +1043,7 @@ See [CLAUDE.md](CLAUDE.md) for development guidelines.
 
 - **GitHub Issues:** Report bugs or request features
 - **Discussions:** Ask questions and share ideas
-- **Email:** contact@your-domain.com
+- **Email:** <contact@your-domain.com>
 
 ### Quick Reference Commands
 
@@ -1033,6 +1092,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**Made with 🎃 by the Project Pumpkin Team**
+Made with 🎃 by the Project Pumpkin Team
 
-*Last updated: 2025-10-05*
+Last updated: 2025-10-05
