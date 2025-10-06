@@ -107,6 +107,36 @@
       </div>
     </div>
 
+    <!-- Search by URL -->
+    <div class="row mb-4">
+      <div class="col-12">
+        <h2>Search by URL</h2>
+        <div class="card">
+          <div class="card-body">
+            <form id="url-search-form">
+              <div class="row">
+                <div class="col-md-8">
+                  <label for="url-search-input" class="form-label fw-bold">Enter URL or Domain:</label>
+                  <input
+                    type="text"
+                    id="url-search-input"
+                    class="form-control"
+                    placeholder="Start typing to search URLs..."
+                    autocomplete="off"
+                  >
+                  <div id="url-autocomplete-list" class="list-group mt-1" style="display: none; position: absolute; z-index: 1000; max-width: 66%;"></div>
+                  <small class="form-text text-muted">Type-ahead search for tested URLs</small>
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                  <button type="submit" class="btn btn-primary">View Test Results</button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Search by Date -->
     <div class="row mb-4">
       <div class="col-12">
@@ -147,36 +177,6 @@
                 </table>
               </div>
             </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Search by URL -->
-    <div class="row mb-4">
-      <div class="col-12">
-        <h2>Search by URL</h2>
-        <div class="card">
-          <div class="card-body">
-            <form id="url-search-form">
-              <div class="row">
-                <div class="col-md-8">
-                  <label for="url-search-input" class="form-label fw-bold">Enter URL or Domain:</label>
-                  <input
-                    type="text"
-                    id="url-search-input"
-                    class="form-control"
-                    placeholder="Start typing to search URLs..."
-                    autocomplete="off"
-                  >
-                  <div id="url-autocomplete-list" class="list-group mt-1" style="display: none; position: absolute; z-index: 1000; max-width: 66%;"></div>
-                  <small class="form-text text-muted">Type-ahead search for tested URLs</small>
-                </div>
-                <div class="col-md-4 d-flex align-items-end">
-                  <button type="submit" class="btn btn-primary">View Test Results</button>
-                </div>
-              </div>
-            </form>
           </div>
         </div>
       </div>

@@ -1,6 +1,6 @@
 // Dashboard JavaScript - Main page functionality
 
-import { formatTimestamp as tzFormatTimestamp, getTimezonePreference } from './timezone-utils.js';
+import { formatTimestamp as tzFormatTimestamp, getTimezonePreference, getTimezoneForAPI } from './timezone-utils.js';
 
 // Utility functions
 function formatTimestamp(timestamp) {
@@ -180,7 +180,8 @@ let calendarInstance = null;
 
 async function fetchAvailableDates() {
   try {
-    const response = await fetch('/api/calendar/available-dates');
+    const timezone = getTimezoneForAPI();
+    const response = await fetch(`/api/calendar/available-dates?timezone=${encodeURIComponent(timezone)}`);
     const result = await response.json();
     if (result.success) {
       availableDates = result.data;
@@ -221,7 +222,8 @@ function initializeCalendar() {
 
 async function fetchRunsByDate(date) {
   try {
-    const response = await fetch(`/api/calendar/runs-by-date?date=${date}`);
+    const timezone = getTimezoneForAPI();
+    const response = await fetch(`/api/calendar/runs-by-date?date=${date}&timezone=${encodeURIComponent(timezone)}`);
     const result = await response.json();
 
     if (result.success) {
@@ -397,5 +399,6 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('timezoneChanged', () => {
     fetchLatestRun();
     fetchTestRuns();
+    fetchAvailableDates(); // Refresh calendar dates for new timezone
   });
 });

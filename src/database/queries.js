@@ -630,21 +630,22 @@ export async function getFailedRequestsByTestId(testId) {
 
 /**
  * Get all dates that have test runs (for calendar highlighting)
+ * @param {string} timezone - IANA timezone name (e.g., 'America/Chicago') or 'UTC'
  * @returns {Promise<Array<string>>} Array of dates in YYYY-MM-DD format
  */
-export async function getAvailableDates() {
+export async function getAvailableDates(timezone = 'UTC') {
   if (!isDatabaseConnected()) {
     return [];
   }
 
   const sql = `
-    SELECT DISTINCT DATE(run_timestamp) as test_date
+    SELECT DISTINCT DATE(run_timestamp AT TIME ZONE $1) as test_date
     FROM test_runs
     ORDER BY test_date DESC
   `;
 
   try {
-    const result = await query(sql);
+    const result = await query(sql, [timezone]);
     return result?.rows.map(row => row.test_date.toISOString().split('T')[0]) || [];
   } catch (error) {
     console.error('Failed to get available dates:', error.message);
@@ -655,9 +656,10 @@ export async function getAvailableDates() {
 /**
  * Get all test runs for a specific date
  * @param {string} date - Date in YYYY-MM-DD format
+ * @param {string} timezone - IANA timezone name (e.g., 'America/Chicago') or 'UTC'
  * @returns {Promise<Array>}
  */
-export async function getTestRunsByDate(date) {
+export async function getTestRunsByDate(date, timezone = 'UTC') {
   if (!isDatabaseConnected()) {
     return [];
   }
@@ -678,13 +680,13 @@ export async function getTestRunsByDate(date) {
       ROUND(AVG(ut.time_to_first_byte_ms)::numeric, 2) as avg_ttfb_ms
     FROM test_runs tr
     LEFT JOIN url_tests ut ON ut.test_run_id = tr.id
-    WHERE DATE(tr.run_timestamp) = $1
+    WHERE DATE(tr.run_timestamp AT TIME ZONE $2) = $1
     GROUP BY tr.id
     ORDER BY tr.run_timestamp DESC
   `;
 
   try {
-    const result = await query(sql, [date]);
+    const result = await query(sql, [date, timezone]);
     return result?.rows || [];
   } catch (error) {
     console.error('Failed to get test runs by date:', error.message);

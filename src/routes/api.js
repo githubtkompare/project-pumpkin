@@ -187,10 +187,23 @@ router.get('/stats/errors', async (req, res) => {
 /**
  * GET /api/calendar/available-dates
  * Get all dates that have test runs (for calendar highlighting)
+ * Query parameters:
+ *   - timezone (optional, default: 'UTC', accepts IANA timezone names like 'America/Chicago')
  */
 router.get('/calendar/available-dates', async (req, res) => {
   try {
-    const dates = await getAvailableDates();
+    const timezone = req.query.timezone || 'UTC';
+
+    // Validate timezone parameter
+    const validTimezonePattern = /^[A-Za-z_]+\/[A-Za-z_]+$|^UTC$/;
+    if (!validTimezonePattern.test(timezone)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid timezone parameter. Use UTC or IANA timezone name (e.g., America/Chicago)'
+      });
+    }
+
+    const dates = await getAvailableDates(timezone);
     res.json({ success: true, data: dates });
   } catch (error) {
     console.error('API Error - /calendar/available-dates:', error);
@@ -201,7 +214,9 @@ router.get('/calendar/available-dates', async (req, res) => {
 /**
  * GET /api/calendar/runs-by-date
  * Get all test runs for a specific date
- * Query parameter: date (YYYY-MM-DD)
+ * Query parameters:
+ *   - date (required, YYYY-MM-DD)
+ *   - timezone (optional, default: 'UTC', accepts IANA timezone names like 'America/Chicago')
  */
 router.get('/calendar/runs-by-date', async (req, res) => {
   try {
@@ -216,7 +231,18 @@ router.get('/calendar/runs-by-date', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Invalid date format. Use YYYY-MM-DD' });
     }
 
-    const runs = await getTestRunsByDate(date);
+    const timezone = req.query.timezone || 'UTC';
+
+    // Validate timezone parameter
+    const validTimezonePattern = /^[A-Za-z_]+\/[A-Za-z_]+$|^UTC$/;
+    if (!validTimezonePattern.test(timezone)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid timezone parameter. Use UTC or IANA timezone name (e.g., America/Chicago)'
+      });
+    }
+
+    const runs = await getTestRunsByDate(date, timezone);
     res.json({ success: true, data: runs });
   } catch (error) {
     console.error('API Error - /calendar/runs-by-date:', error);
