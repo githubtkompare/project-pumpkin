@@ -1,9 +1,16 @@
 // URL Results JavaScript - URL-specific test results page
 
+import {
+  formatTimestamp as tzFormatTimestamp,
+  getTimezonePreference,
+  getDateString,
+  getToday,
+  formatChartDateLabel
+} from './timezone-utils.js';
+
 // Utility functions
 function formatTimestamp(timestamp) {
-  const date = new Date(timestamp);
-  return date.toLocaleString();
+  return tzFormatTimestamp(timestamp);
 }
 
 function formatNumber(num) {
@@ -192,30 +199,38 @@ function displayError(message) {
 }
 
 function drawDailyAverageChart(data) {
-  const canvas = document.getElementById('daily-average-chart');
-  const ctx = canvas.getContext('2d');
+  const svg = document.getElementById('daily-average-chart');
+  const container = svg.parentElement;
 
-  // Set canvas width to match container width
-  const container = canvas.parentElement;
-  canvas.width = container.offsetWidth;
+  // Get container dimensions
+  const containerWidth = container.offsetWidth;
+  const containerHeight = 300;
 
-  // Clear canvas
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  // Set SVG viewBox for responsiveness
+  svg.setAttribute('viewBox', `0 0 ${containerWidth} ${containerHeight}`);
+  svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
 
-  // Generate complete date range for last 15 days
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  // Clear existing SVG content
+  svg.innerHTML = '';
+
+  // Generate complete date range for last 15 days (timezone-aware)
+  const timezone = getTimezonePreference();
+  const today = getToday(timezone);
   const completeData = [];
 
   for (let i = 14; i >= 0; i--) {
     const date = new Date(today);
     date.setDate(today.getDate() - i);
-    const dateStr = date.toISOString().split('T')[0];
+
+    // Get date string in appropriate timezone
+    const dateStr = timezone === 'UTC'
+      ? date.toISOString().split('T')[0]
+      : `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 
     // Find matching data for this date
     const existing = data.find(d => {
-      const testDate = new Date(d.test_date);
-      return testDate.toISOString().split('T')[0] === dateStr;
+      const dbDateStr = getDateString(d.test_date, timezone);
+      return dbDateStr === dateStr;
     });
 
     completeData.push({
@@ -225,20 +240,48 @@ function drawDailyAverageChart(data) {
     });
   }
 
-  // Set canvas dimensions
+  // Set chart dimensions
   const padding = { top: 40, right: 40, bottom: 60, left: 80 };
-  const chartWidth = canvas.width - padding.left - padding.right;
-  const chartHeight = canvas.height - padding.top - padding.bottom;
+  const chartWidth = containerWidth - padding.left - padding.right;
+  const chartHeight = containerHeight - padding.top - padding.bottom;
 
   // Find max value for scaling
-  const maxValue = Math.max(...completeData.map(d => d.avg_load_time_ms), 1); // Min 1 to avoid division by zero
+  const maxValue = Math.max(...completeData.map(d => d.avg_load_time_ms), 1);
   const yScale = chartHeight / maxValue;
 
   // Calculate bar width and spacing
   const barWidth = chartWidth / completeData.length - 10;
   const barSpacing = 10;
 
-  // Draw Y-axis grid lines FIRST (so they appear behind bars)
+  // Add accessibility elements
+  const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+  title.id = 'chart-title';
+  title.textContent = 'Average Load Time - Last 15 Days';
+  svg.appendChild(title);
+
+  const desc = document.createElementNS('http://www.w3.org/2000/svg', 'desc');
+  desc.id = 'chart-desc';
+  desc.textContent = `Bar chart showing daily average page load times in milliseconds over the last 15 days. Maximum value: ${Math.round(maxValue)}ms.`;
+  svg.appendChild(desc);
+
+  // Create groups for layering
+  const gridGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  gridGroup.setAttribute('class', 'grid-lines');
+  svg.appendChild(gridGroup);
+
+  const barsGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  barsGroup.setAttribute('class', 'bars');
+  svg.appendChild(barsGroup);
+
+  const axesGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  axesGroup.setAttribute('class', 'axes');
+  svg.appendChild(axesGroup);
+
+  const labelsGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  labelsGroup.setAttribute('class', 'labels');
+  svg.appendChild(labelsGroup);
+
+  // Draw Y-axis grid lines (behind bars)
   const ySteps = 5;
   const yAxisValues = [];
   for (let i = 0; i <= ySteps; i++) {
@@ -246,107 +289,122 @@ function drawDailyAverageChart(data) {
     const y = padding.top + chartHeight - (value * yScale);
     yAxisValues.push({ value, y });
 
-    // Draw grid line
-    ctx.strokeStyle = '#e9ecef';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(padding.left, y);
-    ctx.lineTo(padding.left + chartWidth, y);
-    ctx.stroke();
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', padding.left);
+    line.setAttribute('y1', y);
+    line.setAttribute('x2', padding.left + chartWidth);
+    line.setAttribute('y2', y);
+    line.setAttribute('stroke', '#e9ecef');
+    line.setAttribute('stroke-width', '1');
+    gridGroup.appendChild(line);
   }
 
-  // Helper function to draw bar with rounded top corners
-  const drawRoundedBar = (x, y, width, height, radius) => {
-    ctx.beginPath();
-    // Start from bottom-left corner
-    ctx.moveTo(x, y + height);
-    // Left side going up
-    ctx.lineTo(x, y + radius);
-    // Top-left rounded corner
-    ctx.arcTo(x, y, x + radius, y, radius);
-    // Top side
-    ctx.lineTo(x + width - radius, y);
-    // Top-right rounded corner
-    ctx.arcTo(x + width, y, x + width, y + radius, radius);
-    // Right side going down
-    ctx.lineTo(x + width, y + height);
-    // Bottom side
-    ctx.lineTo(x, y + height);
-    ctx.closePath();
-    ctx.fill();
-  };
-
-  // Draw bars
+  // Draw bars with rounded top corners
   completeData.forEach((item, index) => {
     const barHeight = item.avg_load_time_ms * yScale;
     const x = padding.left + index * (barWidth + barSpacing);
     const y = padding.top + chartHeight - barHeight;
-
-    // Draw bar with rounded top corners
-    ctx.fillStyle = item.avg_load_time_ms === 0 ? '#dee2e6' : '#0d6efd';
     const effectiveHeight = barHeight > 0 ? barHeight : 1;
-    const cornerRadius = Math.min(4, barWidth / 4, effectiveHeight / 2); // Adaptive radius
-    drawRoundedBar(x, y, barWidth, effectiveHeight, cornerRadius);
+    const cornerRadius = Math.min(4, barWidth / 4, effectiveHeight / 2);
 
-    // Draw value on top of bar (only if > 0)
+    // Create bar rect
+    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    rect.setAttribute('x', x);
+    rect.setAttribute('y', y);
+    rect.setAttribute('width', barWidth);
+    rect.setAttribute('height', effectiveHeight);
+    rect.setAttribute('rx', cornerRadius);
+    rect.setAttribute('ry', cornerRadius);
+    rect.setAttribute('fill', item.avg_load_time_ms === 0 ? '#dee2e6' : '#0d6efd');
+
+    // Add accessibility label
+    const dateLabel = formatChartDateLabel(item.test_date);
+    rect.setAttribute('aria-label', `${dateLabel}: ${Math.round(item.avg_load_time_ms)}ms`);
+
+    barsGroup.appendChild(rect);
+
+    // Draw value label on top of bar (only if > 0)
     if (item.avg_load_time_ms > 0) {
-      ctx.fillStyle = '#000';
-      ctx.font = '11px Arial';
-      ctx.textAlign = 'center';
-      ctx.fillText(
-        Math.round(item.avg_load_time_ms) + 'ms',
-        x + barWidth / 2,
-        y - 5
-      );
+      const valueText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      valueText.setAttribute('x', x + barWidth / 2);
+      valueText.setAttribute('y', y - 5);
+      valueText.setAttribute('text-anchor', 'middle');
+      valueText.setAttribute('font-size', '11px');
+      valueText.setAttribute('font-family', 'Arial');
+      valueText.setAttribute('fill', '#000');
+      valueText.textContent = Math.round(item.avg_load_time_ms) + 'ms';
+      labelsGroup.appendChild(valueText);
     }
 
-    // Draw date label
-    ctx.fillStyle = '#6c757d';
-    ctx.font = '10px Arial';
-    ctx.save();
-    ctx.translate(x + barWidth / 2, padding.top + chartHeight + 15);
-    ctx.rotate(-Math.PI / 4);
-    ctx.textAlign = 'right';
-    const date = new Date(item.test_date);
-    const dateLabel = `${date.getMonth() + 1}/${date.getDate()}`;
-    ctx.fillText(dateLabel, 0, 0);
-    ctx.restore();
+    // Draw date label (rotated)
+    const dateText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    dateText.setAttribute('x', x + barWidth / 2);
+    dateText.setAttribute('y', padding.top + chartHeight + 15);
+    dateText.setAttribute('text-anchor', 'end');
+    dateText.setAttribute('font-size', '10px');
+    dateText.setAttribute('font-family', 'Arial');
+    dateText.setAttribute('fill', '#6c757d');
+    dateText.setAttribute('transform', `rotate(-45, ${x + barWidth / 2}, ${padding.top + chartHeight + 15})`);
+    dateText.textContent = dateLabel;
+    labelsGroup.appendChild(dateText);
   });
 
   // Draw Y-axis
-  ctx.strokeStyle = '#dee2e6';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(padding.left, padding.top);
-  ctx.lineTo(padding.left, padding.top + chartHeight);
-  ctx.stroke();
+  const yAxis = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  yAxis.setAttribute('x1', padding.left);
+  yAxis.setAttribute('y1', padding.top);
+  yAxis.setAttribute('x2', padding.left);
+  yAxis.setAttribute('y2', padding.top + chartHeight);
+  yAxis.setAttribute('stroke', '#dee2e6');
+  yAxis.setAttribute('stroke-width', '1');
+  axesGroup.appendChild(yAxis);
 
   // Draw X-axis
-  ctx.beginPath();
-  ctx.moveTo(padding.left, padding.top + chartHeight);
-  ctx.lineTo(padding.left + chartWidth, padding.top + chartHeight);
-  ctx.stroke();
+  const xAxis = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  xAxis.setAttribute('x1', padding.left);
+  xAxis.setAttribute('y1', padding.top + chartHeight);
+  xAxis.setAttribute('x2', padding.left + chartWidth);
+  xAxis.setAttribute('y2', padding.top + chartHeight);
+  xAxis.setAttribute('stroke', '#dee2e6');
+  xAxis.setAttribute('stroke-width', '1');
+  axesGroup.appendChild(xAxis);
 
   // Y-axis label
-  ctx.fillStyle = '#000';
-  ctx.font = 'bold 12px Arial';
-  ctx.save();
-  ctx.translate(20, padding.top + chartHeight / 2);
-  ctx.rotate(-Math.PI / 2);
-  ctx.textAlign = 'center';
-  ctx.fillText('Average Load Time (ms)', 0, 0);
-  ctx.restore();
+  const yAxisLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+  yAxisLabel.setAttribute('x', 20);
+  yAxisLabel.setAttribute('y', padding.top + chartHeight / 2);
+  yAxisLabel.setAttribute('text-anchor', 'middle');
+  yAxisLabel.setAttribute('font-size', '12px');
+  yAxisLabel.setAttribute('font-family', 'Arial');
+  yAxisLabel.setAttribute('font-weight', 'bold');
+  yAxisLabel.setAttribute('fill', '#000');
+  yAxisLabel.setAttribute('transform', `rotate(-90, 20, ${padding.top + chartHeight / 2})`);
+  yAxisLabel.textContent = 'Average Load Time (ms)';
+  labelsGroup.appendChild(yAxisLabel);
 
   // X-axis label
-  ctx.textAlign = 'center';
-  ctx.fillText('Date', padding.left + chartWidth / 2, canvas.height - 10);
+  const xAxisLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+  xAxisLabel.setAttribute('x', padding.left + chartWidth / 2);
+  xAxisLabel.setAttribute('y', containerHeight - 10);
+  xAxisLabel.setAttribute('text-anchor', 'middle');
+  xAxisLabel.setAttribute('font-size', '12px');
+  xAxisLabel.setAttribute('font-family', 'Arial');
+  xAxisLabel.setAttribute('font-weight', 'bold');
+  xAxisLabel.setAttribute('fill', '#000');
+  xAxisLabel.textContent = 'Date';
+  labelsGroup.appendChild(xAxisLabel);
 
-  // Draw Y-axis scale labels (using pre-calculated values)
+  // Draw Y-axis scale labels
   yAxisValues.forEach(({ value, y }) => {
-    ctx.fillStyle = '#6c757d';
-    ctx.font = '10px Arial';
-    ctx.textAlign = 'right';
-    ctx.fillText(Math.round(value), padding.left - 10, y + 4);
+    const scaleText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    scaleText.setAttribute('x', padding.left - 10);
+    scaleText.setAttribute('y', y + 4);
+    scaleText.setAttribute('text-anchor', 'end');
+    scaleText.setAttribute('font-size', '10px');
+    scaleText.setAttribute('font-family', 'Arial');
+    scaleText.setAttribute('fill', '#6c757d');
+    scaleText.textContent = Math.round(value);
+    labelsGroup.appendChild(scaleText);
   });
 }
 
@@ -382,5 +440,13 @@ document.addEventListener('DOMContentLoaded', () => {
         drawDailyAverageChart(chartData);
       }
     }, 250); // Debounce resize events
+  });
+
+  // Listen for timezone changes and refresh displays
+  window.addEventListener('timezoneChanged', () => {
+    fetchUrlTests(url);
+    if (chartData) {
+      drawDailyAverageChart(chartData);
+    }
   });
 });

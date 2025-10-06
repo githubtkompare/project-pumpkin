@@ -11,8 +11,9 @@
   <nav class="navbar navbar-dark bg-dark mb-4">
     <div class="container-fluid">
       <a href="/" class="navbar-brand mb-0 h1">🐈 Project Pumpkin - Domain Test Details</a>
-      <div>
-        <a href="#" id="back-to-run" class="btn btn-outline-light btn-sm me-2">← Back to Test Run</a>
+      <div class="d-flex gap-2">
+        <div id="timezone-toggle-container"></div>
+        <a href="#" id="back-to-run" class="btn btn-outline-light btn-sm">← Back to Test Run</a>
         <a href="/" class="btn btn-outline-light btn-sm">Dashboard</a>
       </div>
     </div>
@@ -120,6 +121,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="test-detail.js"></script>
+  <script type="module" src="timezone-toggle.js"></script>
+  <script type="module" src="test-detail.js"></script>
 </body>
 </html>

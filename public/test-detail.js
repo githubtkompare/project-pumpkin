@@ -1,9 +1,10 @@
 // Test Detail JavaScript - Single domain test detail page
 
+import { formatTimestamp as tzFormatTimestamp } from './timezone-utils.js';
+
 // Utility functions
 function formatTimestamp(timestamp) {
-  const date = new Date(timestamp);
-  return date.toLocaleString();
+  return tzFormatTimestamp(timestamp);
 }
 
 function formatNumber(num) {
@@ -364,4 +365,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   fetchTestDetails(testId);
+
+  // Listen for timezone changes and refresh displays
+  window.addEventListener('timezoneChanged', () => {
+    fetchTestDetails(testId);
+  });
 });

@@ -12,7 +12,10 @@
   <nav class="navbar navbar-dark bg-dark mb-4">
     <div class="container-fluid">
       <a href="/" class="navbar-brand mb-0 h1">🐈 Project Pumpkin - Test Run Details</a>
-      <a href="/" class="btn btn-outline-light btn-sm">← Back to Dashboard</a>
+      <div class="d-flex gap-2">
+        <div id="timezone-toggle-container"></div>
+        <a href="/" class="btn btn-outline-light btn-sm">← Back to Dashboard</a>
+      </div>
     </div>
   </nav>
 
@@ -76,6 +79,7 @@
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
   <script src="https://cdn.datatables.net/2.3.4/js/dataTables.min.js"></script>
   <script src="https://cdn.datatables.net/2.3.4/js/dataTables.bootstrap5.min.js"></script>
-  <script src="run-details.js"></script>
+  <script type="module" src="timezone-toggle.js"></script>
+  <script type="module" src="run-details.js"></script>
 </body>
 </html>

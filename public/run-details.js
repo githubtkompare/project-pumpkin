@@ -1,9 +1,10 @@
 // Run Details JavaScript - Details page functionality
 
+import { formatTimestamp as tzFormatTimestamp } from './timezone-utils.js';
+
 // Utility functions (duplicated for standalone page)
 function formatTimestamp(timestamp) {
-  const date = new Date(timestamp);
-  return date.toLocaleString();
+  return tzFormatTimestamp(timestamp);
 }
 
 function formatDuration(ms) {
@@ -200,4 +201,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   fetchRunSummary(runId);
   fetchUrlTests(runId);
+
+  // Listen for timezone changes and refresh displays
+  window.addEventListener('timezoneChanged', () => {
+    fetchRunSummary(runId);
+    fetchUrlTests(runId);
+  });
 });
