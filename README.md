@@ -914,7 +914,6 @@ If you're still stuck:
 2. **Check detailed documentation:**
    - [DATABASE.md](DATABASE.md) - Database troubleshooting
    - [SECURITY.md](SECURITY.md) - Security best practices
-   - [CLAUDE.md](CLAUDE.md) - Developer documentation
 
 3. **File an issue on GitHub** with:
    - What you were trying to do
@@ -1026,7 +1025,7 @@ Want to improve Project Pumpkin?
 3. Make your changes
 4. Submit a pull request
 
-See [CLAUDE.md](CLAUDE.md) for development guidelines.
+See the project documentation for development guidelines.
 
 ---
 
@@ -1034,7 +1033,6 @@ See [CLAUDE.md](CLAUDE.md) for development guidelines.
 
 ### Documentation
 
-- **[CLAUDE.md](CLAUDE.md)** - Complete developer documentation
 - **[DATABASE.md](DATABASE.md)** - Database schema and queries
 - **[SECURITY.md](SECURITY.md)** - Security best practices
 - **[Playwright Docs](https://playwright.dev)** - Playwright testing framework
