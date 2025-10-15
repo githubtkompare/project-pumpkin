@@ -41,19 +41,39 @@ if ! node src/database/wait-for-db.js 30; then
     export TEST_RUN_ID=""
 else
     echo ""
+    # Give database extra time to fully initialize connections
+    echo "Database is ready. Waiting 2 seconds for connection pool to stabilize..."
+    sleep 2
+
     # Create test run in database and get TEST_RUN_ID
     echo "Creating test run record in database..."
-    TEST_RUN_RESULT=$(node src/database/create-test-run.js "$TOTAL" "$WORKERS" "Parallel test run from test-urls-parallel.sh")
 
-    export TEST_RUN_ID="$TEST_RUN_RESULT"
+    # Capture both stdout and stderr for debugging
+    TEST_RUN_OUTPUT=$(node src/database/create-test-run.js "$TOTAL" "$WORKERS" "Parallel test run from test-urls-parallel.sh" 2>&1)
+    TEST_RUN_EXIT_CODE=$?
 
-    if [ "$TEST_RUN_ID" != "0" ] && [ -n "$TEST_RUN_ID" ]; then
+    # Extract just the numeric ID from the first line of stdout
+    TEST_RUN_ID=$(echo "$TEST_RUN_OUTPUT" | grep -E "^[0-9]+$" | head -1)
+
+    if [ $TEST_RUN_EXIT_CODE -eq 0 ] && [ "$TEST_RUN_ID" != "0" ] && [ -n "$TEST_RUN_ID" ]; then
         echo "✓ Test run created with ID: $TEST_RUN_ID"
-        # Ensure TEST_RUN_ID is available to child processes
         export TEST_RUN_ID
     else
-        echo "⚠ Database not available - continuing without database tracking"
-        export TEST_RUN_ID=""
+        echo ""
+        echo "✗ FAILED to create test run in database"
+        echo "Exit code: $TEST_RUN_EXIT_CODE"
+        echo "Output:"
+        echo "$TEST_RUN_OUTPUT"
+        echo ""
+        echo "ERROR: Cannot continue without database test run."
+        echo "This ensures all test results are properly tracked."
+        echo ""
+        echo "Troubleshooting:"
+        echo "  1. Check database is running: docker-compose ps postgres"
+        echo "  2. Check DATABASE_URL in .env file"
+        echo "  3. Check database logs: docker-compose logs postgres"
+        echo ""
+        exit 1
     fi
 
     echo "DEBUG: TEST_RUN_ID is set to: $TEST_RUN_ID"
@@ -64,7 +84,8 @@ fi
 START_TIME=$(date +%s%3N)
 
 # Run Playwright batch test with Firefox
-npx playwright test --project=firefox-parallel --workers="$WORKERS"
+# Pass TEST_RUN_ID explicitly to ensure it's available to all worker processes
+TEST_RUN_ID="$TEST_RUN_ID" npx playwright test --project=firefox-parallel --workers="$WORKERS"
 
 # Check exit status
 EXIT_CODE=$?

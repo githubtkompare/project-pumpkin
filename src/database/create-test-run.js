@@ -16,7 +16,7 @@ async function main() {
   const notes = process.argv[4] || 'Parallel test run from test-urls-parallel.sh';
 
   if (totalUrls === 0) {
-    console.error('Error: totalUrls is required', { stdio: 'inherit' });
+    console.error('Error: totalUrls is required');
     process.exit(1);
   }
 
@@ -29,11 +29,13 @@ async function main() {
       console.log(result.id);
       process.exit(0);
     } else {
+      console.error('Failed to create test run - database connection may have failed');
       console.log('0');
       process.exit(1);
     }
   } catch (error) {
-    console.error('Error creating test run:', error.message, { stdio: 'inherit' });
+    console.error('Error creating test run:', error.message);
+    console.error('Stack trace:', error.stack);
     console.log('0');
     process.exit(1);
   } finally {

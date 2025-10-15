@@ -1,8 +1,10 @@
-// @ts-check
 import { promises as fs } from 'fs';
 import path from 'path';
 import { initializePool, isDatabaseConnected } from '../src/database/client.js';
-import { insertUrlTest, getTestRunIdFromEnv } from '../src/database/ingest.js';
+import { insertUrlTest, getTestRunIdFromEnv, createTestRun } from '../src/database/ingest.js';
+
+// Global variable to store auto-created test run ID for the current test session
+let autoCreatedTestRunId = null;
 
 /**
  * Auto-scroll function to trigger lazy-loaded images and content
@@ -139,6 +141,56 @@ export async function parseHttpResponseCodes(harPath) {
 }
 
 /**
+ * Ensure a test run ID exists for database tracking
+ * If TEST_RUN_ID environment variable is set (from batch script), use it
+ * Otherwise, auto-create a test run for this session
+ * @returns {Promise<number|null>} Test run ID or null if unable to create
+ */
+async function ensureTestRunId() {
+  // Always initialize the database pool first
+  try {
+    await initializePool();
+
+    if (!isDatabaseConnected()) {
+      console.warn('⚠ Database not available - skipping test run creation');
+      return null;
+    }
+  } catch (error) {
+    console.warn('⚠ Error initializing database pool:', error.message);
+    return null;
+  }
+
+  // Check if TEST_RUN_ID is already set by batch script
+  const envTestRunId = getTestRunIdFromEnv();
+  if (envTestRunId) {
+    console.log(`Using test run ID from environment: ${envTestRunId}`);
+    return envTestRunId;
+  }
+
+  // Check if we already auto-created a test run for this session
+  if (autoCreatedTestRunId) {
+    return autoCreatedTestRunId;
+  }
+
+  // Try to auto-create a test run
+  console.log('Auto-creating test run for individual test execution...');
+  const testRun = await createTestRun(
+    1, // totalUrls - we don't know how many, so estimate 1
+    1, // parallelWorkers
+    'Individual test run (auto-created)'
+  );
+
+  if (testRun) {
+    autoCreatedTestRunId = testRun.id;
+    console.log(`✓ Auto-created test run with ID: ${autoCreatedTestRunId}`);
+    return autoCreatedTestRunId;
+  } else {
+    console.warn('⚠ Failed to auto-create test run - database save will be skipped');
+    return null;
+  }
+}
+
+/**
  * Run a complete website screenshot test with performance metrics
  * @param {object} browser - Playwright browser instance
  * @param {string} url - URL to test
@@ -244,11 +296,10 @@ export async function runWebsiteTest(browser, url) {
 
   // Store results in database if connection is available
   try {
-    // Initialize database connection if not already done
-    await initializePool();
+    // Ensure we have a test run ID (from env or auto-created)
+    const testRunId = await ensureTestRunId();
 
-    if (isDatabaseConnected()) {
-      const testRunId = getTestRunIdFromEnv();
+    if (testRunId) {
       console.log('Storing test results in database...');
 
       const urlTestId = await insertUrlTest(
@@ -260,10 +311,12 @@ export async function runWebsiteTest(browser, url) {
       );
 
       if (urlTestId) {
-        console.log(`✓ Test results stored in database (ID: ${urlTestId})`);
+        console.log(`✓ Test results stored in database (ID: ${urlTestId}, Test Run: ${testRunId})`);
+      } else {
+        console.warn('⚠ Failed to store test results in database');
       }
     } else {
-      console.log('⚠ Database not available - results saved to filesystem only');
+      console.log('⚠ No test run ID available - results saved to filesystem only');
     }
   } catch (dbError) {
     console.warn('Database storage failed (results still saved to filesystem):', dbError.message);
